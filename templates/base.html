@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>tokio live demo</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        .axis path,
+        .line {
+            fill: none;
+            stroke: black;
+            shape-rendering: crispEdges;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Tokio Live Demo</h1>
+    <h2>Current statistics</h2>
+    <div>
+        ...
+    </div>
+    <h2>Current Tokio Tasks</h2>
+    <div id="graph"></div>
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws');
+        const data = [];
+
+        const margin = { top: 20, right: 20, bottom: 30, left: 50 },
+            width = 450 - margin.left - margin.right,
+            height = 200 - margin.top - margin.bottom;
+
+        const x = d3.scaleTime().range([0, width]);
+        const y = d3.scaleLinear().range([height, 0]);
+
+        const xAxis = d3.axisBottom(x);
+        const yAxis = d3.axisLeft(y);
+
+        const svg = d3.select("#graph").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")");
+
+        svg.append("g")
+            .attr("class", "y axis");
+
+        const line = d3.line()
+            .x(d => x(d.time))
+            .y(d => y(d.value))
+            .curve(d3.curveBasis);
+
+        socket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            const datum = { time: new Date(message.time), value: message.value };
+            data.push(datum);
+
+            // Update the domains
+            x.domain(d3.extent(data, d => d.time));
+            y.domain(d3.extent(data, d => d.value));
+
+            // Redraw the axes
+            svg.select(".x.axis").call(xAxis);
+            svg.select(".y.axis").call(yAxis);
+
+            // Bind the data
+            const path = svg.selectAll(".line")
+                .data([data], d => d.time);
+
+            // Enter + update
+            path.enter().append("path")
+                .attr("class", "line")
+                .merge(path)
+                .attr("d", line);
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket connection closed');
+        };
+    </script>
+</body>
+
+</html>
