@@ -1,0 +1,15 @@
+<ul>
+    <li>active tasks: {{ active_tasks }}</li>
+    <li>worker number: {{ num_workers }}</li>
+    <li>blocking threads: {{ num_blocking_threads }}</li>
+    <li>i/o driver "ready" events: {{ io_driver_ready_count }}</li>
+    <li>Load 1 Minute: {{ load.one.round() }}</li>
+    <li>Load 5 Minute: {{ load.five.round() }}</li>
+    <li>Load 15 Minute: {{ load.fifteen.round() }}</li>
+    {% for (i, usage) in cpus.iter().enumerate() %}
+    <li>CPU {{ i }}: {{ usage }}</li>
+    {% endfor %}
+    <li>memory total: {{ mem }} MB</li>
+    <li>memory free: {{ mem_free }} MB</li>
+    <li>memory available: {{ mem_available }} MB</li>
+</ul>

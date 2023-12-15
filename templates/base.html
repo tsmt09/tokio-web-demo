@@ -3,6 +3,7 @@
 
 <head>
     <title>tokio live demo</title>
+    <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
         .axis path,
@@ -15,13 +16,26 @@
 </head>
 
 <body>
+    <small>built in love with rust, tokio, axum, htmx and d3</small>
     <h1>Tokio Live Demo</h1>
     <h2>Current statistics</h2>
-    <div>
-        ...
+    <div id="stats" hx-get="/stats" hx-trigger="load,every 2s">
     </div>
     <h2>Current Tokio Tasks</h2>
     <div id="graph"></div>
+    <div id="sleeper">
+        <h2>Sleep Tasks generator</h2>
+        <form hx-post="/sleeper" hx-swap="none">
+            <label for="#tasks">Tasks:</label>
+            <input id="tasks" name="tasks" value="10"/>
+            <label for="#time">Time in seconds:</label>
+            <input id="time" name="time" value="10"/>
+            <button type="submit">Spawn</button>
+        </form>
+    </div>
+
+
+
     <script>
         const socket = new WebSocket('ws://' + window.location.host + '/ws');
         const data = [];
@@ -58,6 +72,9 @@
             const message = JSON.parse(event.data);
             const datum = { time: new Date(message.time), value: message.value };
             data.push(datum);
+            if (data.length > 1000) {
+                data.shift();
+            }
 
             // Update the domains
             x.domain(d3.extent(data, d => d.time));
