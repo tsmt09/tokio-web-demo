@@ -3,7 +3,9 @@
 
 <head>
     <title>tokio live demo</title>
-    <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.9"
+        integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
+        crossorigin="anonymous"></script>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
         .axis path,
@@ -18,81 +20,73 @@
 <body>
     <small>built in love with rust, tokio, axum, htmx and d3</small>
     <h1>Tokio Live Demo</h1>
-    <h2>Current statistics</h2>
-    <div id="stats" hx-get="/stats" hx-trigger="load,every 2s">
-    </div>
     <h2>Current Tokio Tasks</h2>
-    <div id="graph"></div>
+    <h3>Tasks</h3>
+    <div id="tasks"></div>
+    <h3>Memory</h3>
+    <div id="memory"></div>
+    <h3>CPU</h3>
+    <div id="cpu"></div>
+    <h2>Task Generators</h2>
     <div id="sleeper">
         <h2>Sleep Tasks generator</h2>
         <form hx-post="/sleeper" hx-swap="none">
             <label for="#tasks">Tasks:</label>
-            <input id="tasks" name="tasks" value="10"/>
+            <input id="tasks" name="tasks" value="10" />
             <label for="#time">Time in seconds:</label>
-            <input id="time" name="time" value="10"/>
+            <input id="time" name="time" value="10" />
             <button type="submit">Spawn</button>
         </form>
     </div>
-
+    <div id="channel">
+        <h2>channel Tasks generator</h2>
+        <form hx-post="/channel" hx-swap="none">
+            <label for="#tasks">Receiver Tasks:</label>
+            <input id="tasks" name="tasks" value="100" />
+            <label for="#time">Delay between ping:</label>
+            <input id="time" name="time" value="10" />
+            <label for="#repeat">"PING" repeats, before "TERMINATE" is sent:</label>
+            <input id="repeat" name="repeat" value="10" />
+            <button type="submit">Spawn</button>
+        </form>
+    </div>
+    <!-- <h2>Current statistics</h2>
+    <div id="stats" hx-get="/stats" hx-trigger="load,every 2s">
+    </div> -->
 
 
     <script>
         const socket = new WebSocket('ws://' + window.location.host + '/ws');
-        const data = [];
 
-        const margin = { top: 20, right: 20, bottom: 30, left: 50 },
-            width = 450 - margin.left - margin.right,
-            height = 200 - margin.top - margin.bottom;
-
-        const x = d3.scaleTime().range([0, width]);
-        const y = d3.scaleLinear().range([height, 0]);
-
-        const xAxis = d3.axisBottom(x);
-        const yAxis = d3.axisLeft(y);
-
-        const svg = d3.select("#graph").append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g")
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-        svg.append("g")
-            .attr("class", "x axis")
-            .attr("transform", "translate(0," + height + ")");
-
-        svg.append("g")
-            .attr("class", "y axis");
-
-        const line = d3.line()
-            .x(d => x(d.time))
-            .y(d => y(d.value))
-            .curve(d3.curveBasis);
+        const task_data = [{ x: Date.now(), y: 0 }];
+        const memory_data = [{ x: Date.now(), y: 0 }];
+        const cpu_data = [{ x: Date.now(), y: 0 }];
+        const limit = 10000;
+        createLineGraph("#tasks", task_data);
+        createLineGraph("#memory", memory_data);
+        createLineGraph("#cpu", cpu_data);
 
         socket.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            const datum = { time: new Date(message.time), value: message.value };
-            data.push(datum);
-            if (data.length > 1000) {
-                data.shift();
+            var message = JSON.parse(event.data);
+            let time = new Date(message.time);
+
+            if (task_data.length >= limit) {
+                task_data.shift();
             }
+            task_data.push({ x: time, y: message.tasks });
+            if (memory_data.length >= limit) {
+                memory_data.shift();
+            }
+            memory_data.push({ x: time, y: message.memory });
+            if (cpu_data.length >= limit) {
+                cpu_data.shift();
+            }
+            cpu_data.push({ x: time, y: message.cpu });
 
-            // Update the domains
-            x.domain(d3.extent(data, d => d.time));
-            y.domain(d3.extent(data, d => d.value));
 
-            // Redraw the axes
-            svg.select(".x.axis").call(xAxis);
-            svg.select(".y.axis").call(yAxis);
-
-            // Bind the data
-            const path = svg.selectAll(".line")
-                .data([data], d => d.time);
-
-            // Enter + update
-            path.enter().append("path")
-                .attr("class", "line")
-                .merge(path)
-                .attr("d", line);
+            updateLineGraph("#tasks", task_data);
+            updateLineGraph("#memory", memory_data);
+            updateLineGraph("#cpu", cpu_data);
         };
 
         socket.onerror = (error) => {
@@ -102,6 +96,93 @@
         socket.onclose = () => {
             console.log('WebSocket connection closed');
         };
+
+        // Function to create a line graph using D3.js
+        function createLineGraph(containerId, data) {
+            // Set the dimensions and margins of the graph
+            const margin = { top: 10, right: 30, bottom: 30, left: 60 },
+                width = 460 - margin.left - margin.right,
+                height = 200 - margin.top - margin.bottom;
+
+            // Append the SVG object to the specified container
+            const svg = d3.select(containerId)
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // Add X axis and assign a class 'x-axis'
+            const x = d3.scaleTime()
+                .domain([0, d3.max(data, d => d.x)])
+                .range([0, width]);
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .attr("class", "x-axis")
+                .call(d3.axisBottom(x));
+
+            // Add Y axis and assign a class 'y-axis'
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.y)])
+                .range([height, 0]);
+            svg.append("g")
+                .attr("class", "y-axis")
+                .call(d3.axisLeft(y));
+
+            // Add the line and assign a class 'line'
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line")
+                .attr("fill", "none")
+                .attr("stroke", "steelblue")
+                .attr("stroke-width", 1.5)
+                .attr("d", d3.line()
+                    .x(d => x(d.x))
+                    .y(d => y(d.y))
+                );
+        }
+        function updateLineGraph(containerId, newData) {
+            // Select the existing SVG container
+            const svg = d3.select(containerId).select("svg g");
+
+            if (!svg.empty()) {
+                console.log(newData);
+                // Define the dimensions and margins as per the original graph creation
+                const margin = { top: 10, right: 30, bottom: 30, left: 60 },
+                    width = 460 - margin.left - margin.right,
+                    height = 200 - margin.top - margin.bottom;
+
+                // Update the X and Y scales to reflect the new data range
+                const x = d3.scaleTime()
+                    .domain([d3.min(newData, d => d.x), d3.max(newData, d => d.x)])
+                    .range([0, width]);
+                const y = d3.scaleLinear()
+                    .domain([d3.min(newData, d => d.y), d3.max(newData, d => d.y)])
+                    .range([height, 0]);
+
+                // Update the X and Y axes
+                svg.select(".x-axis")
+                    .transition()
+                    .duration(750)
+                    .call(d3.axisBottom(x));
+                svg.select(".y-axis")
+                    .transition()
+                    .duration(750)
+                    .call(d3.axisLeft(y));
+
+                // Redraw the line with the new data
+                svg.select(".line")
+                    .datum(newData)
+                    .transition()
+                    .duration(750)
+                    .attr("d", d3.line()
+                        .x(d => x(d.x))
+                        .y(d => y(d.y))
+                    );
+            } else {
+                console.log("Graph container not found or graph not initialized.");
+            }
+        }
     </script>
 </body>
 

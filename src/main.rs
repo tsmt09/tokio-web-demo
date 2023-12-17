@@ -1,17 +1,18 @@
+mod channel;
 mod sleeper;
 
 use askama::Template;
 use axum::{
-    extract::{ws::WebSocket, WebSocketUpgrade, Query},
+    extract::{ws::WebSocket, Query, WebSocketUpgrade},
     response::{Html, IntoResponse},
     routing::{get, post},
-    Router, Form,
+    Form, Router,
 };
-use serde_json::json;
-use tokio::time::Sleep;
 use serde::Deserialize;
+use serde_json::json;
 use std::time::Duration;
-use sysinfo::{Cpu, CpuExt, LoadAvg, SystemExt, NetworksExt};
+use sysinfo::{Cpu, CpuExt, LoadAvg, NetworksExt, SystemExt, ProcessExt};
+use tokio::time::Sleep;
 
 #[derive(Template)]
 #[template(path = "base.html")]
@@ -23,15 +24,22 @@ async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
 
 async fn handle_socket(mut socket: WebSocket) {
     let mut interval = tokio::time::interval(Duration::from_millis(1000));
+    let metrics = tokio::runtime::Handle::current().metrics();
+    let current_pid = sysinfo::get_current_pid().expect("cannot get pid");
+    let mut system = sysinfo::System::new_all();
     loop {
         interval.tick().await;
-        let tasks = tokio::runtime::Handle::current()
-            .metrics()
-            .active_tasks_count();
+        system.refresh_process(current_pid);
+        let process = system.process(current_pid).expect(("cannot get current process from system"));
+        let tasks = metrics.active_tasks_count();
         let now = chrono::Utc::now();
+        let memory = process.memory() / 1_000_000;
+        let cpu = process.cpu_usage();
         let message = json!({
             "time": now.to_rfc3339(),
-            "value": tasks // Random value between 0-100
+            "tasks": tasks, // Random value between 0-100
+            "memory": memory,
+            "cpu": cpu
         })
         .to_string();
 
@@ -56,7 +64,7 @@ struct Stats {
     cpus: Vec<f32>,
     mem: u64,
     mem_free: u64,
-    mem_available: u64
+    mem_available: u64,
 }
 
 async fn stats() -> Html<String> {
@@ -67,7 +75,11 @@ async fn stats() -> Html<String> {
     let io_driver_ready_count = metrics.io_driver_ready_count();
     let sysinfo = sysinfo::System::new_all();
     let load = sysinfo.load_average();
-    let cpus: Vec<f32> = sysinfo.cpus().iter().map(|cpu| cpu.cpu_usage()).collect();
+    let cpus: Vec<f32> = sysinfo
+        .cpus()
+        .iter()
+        .map(|cpu| cpu.cpu_usage().round())
+        .collect();
     let mem = sysinfo.total_memory() / 1_000_000;
     let mem_free = sysinfo.free_memory() / 1_000_000;
     let mem_available = sysinfo.available_memory() / 1_000_000;
@@ -80,7 +92,7 @@ async fn stats() -> Html<String> {
         cpus,
         mem,
         mem_free,
-        mem_available
+        mem_available,
     }
     .render()
     .unwrap()
@@ -90,7 +102,7 @@ async fn stats() -> Html<String> {
 #[derive(Deserialize)]
 struct SleeperForm {
     tasks: u64,
-    time: u64
+    time: u64,
 }
 
 async fn sleeper(Form(f): Form<SleeperForm>) {
@@ -99,9 +111,23 @@ async fn sleeper(Form(f): Form<SleeperForm>) {
     s.spawn().await;
 }
 
+#[derive(Deserialize)]
+struct ChannelForm {
+    tasks: u64,
+    time: u64,
+    repeat: u64,
+}
+
+async fn channel(Form(f): Form<ChannelForm>) {
+    let time = Duration::from_secs(f.time);
+    let c = channel::Channel::new(f.tasks, time, f.repeat);
+    c.spawn().await;
+}
+
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     std::env::set_var("RUST_LOG", "DEBUG");
+    console_subscriber::init();
     pretty_env_logger::init_timed();
     log::info!("starting tokio web demo");
 
@@ -112,7 +138,8 @@ async fn main() -> Result<(), std::io::Error> {
         )
         .route("/ws", get(websocket_handler))
         .route("/stats", get(stats))
-        .route("/sleeper", post(sleeper));
+        .route("/sleeper", post(sleeper))
+        .route("/channel", post(channel));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await
 }
