@@ -1,7 +1,5 @@
 use std::time::Duration;
 
-use tokio_util::task::TaskTracker;
-
 // A simple struct that spawns a number of tokio tasks, which are just sleeping
 pub struct Sleeper {
     tasks: u64,
@@ -10,17 +8,14 @@ pub struct Sleeper {
 
 impl Sleeper {
     pub fn new(tasks: u64, time: Duration) -> Self {
-        Self {
-            tasks,
-            time,
-        }
+        Self { tasks, time }
     }
 
     pub async fn spawn(&self) {
         for _ in 0..self.tasks {
-            let duration = self.time.clone();
+            let t = self.time;
             tokio::spawn(async move {
-                tokio::time::sleep(duration).await;
+                tokio::time::sleep(t).await;
             });
         }
     }

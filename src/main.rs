@@ -3,7 +3,7 @@ mod sleeper;
 
 use askama::Template;
 use axum::{
-    extract::{ws::WebSocket, Query, WebSocketUpgrade},
+    extract::{ws::WebSocket, WebSocketUpgrade},
     response::{Html, IntoResponse},
     routing::{get, post},
     Form, Router,
@@ -11,8 +11,7 @@ use axum::{
 use serde::Deserialize;
 use serde_json::json;
 use std::time::Duration;
-use sysinfo::{Cpu, CpuExt, LoadAvg, NetworksExt, SystemExt, ProcessExt};
-use tokio::time::Sleep;
+use sysinfo::{CpuExt, LoadAvg, ProcessExt, SystemExt};
 
 #[derive(Template)]
 #[template(path = "base.html")]
@@ -30,7 +29,9 @@ async fn handle_socket(mut socket: WebSocket) {
     loop {
         interval.tick().await;
         system.refresh_process(current_pid);
-        let process = system.process(current_pid).expect(("cannot get current process from system"));
+        let process = system
+            .process(current_pid)
+            .expect("cannot get current process from system");
         let tasks = metrics.active_tasks_count();
         let now = chrono::Utc::now();
         let memory = process.memory() / 1_000_000;
@@ -127,7 +128,7 @@ async fn channel(Form(f): Form<ChannelForm>) {
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     std::env::set_var("RUST_LOG", "DEBUG");
-    console_subscriber::init();
+    // console_subscriber::init();
     pretty_env_logger::init_timed();
     log::info!("starting tokio web demo");
 
