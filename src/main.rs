@@ -1,4 +1,5 @@
 mod channel;
+mod rediskeys;
 mod sleeper;
 
 use askama::Template;
@@ -125,12 +126,23 @@ async fn channel(Form(f): Form<ChannelForm>) {
     c.spawn().await;
 }
 
+#[derive(Deserialize)]
+struct RedisKeysForm {
+    tasks: u64,
+    keys: u64,
+}
+
+async fn rediskeys(Form(f): Form<RedisKeysForm>) {
+    let r = rediskeys::RedisKeys::new(f.tasks, f.keys);
+    r.spawn().await;
+}
+
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     std::env::set_var("RUST_LOG", "DEBUG");
     // console_subscriber::init();
     pretty_env_logger::init_timed();
-    log::info!("starting tokio web demo");
+    log::info!("starting tokio web demo at http://127.0.0.1:8123");
 
     let app = Router::new()
         .route(
@@ -140,7 +152,8 @@ async fn main() -> Result<(), std::io::Error> {
         .route("/ws", get(websocket_handler))
         .route("/stats", get(stats))
         .route("/sleeper", post(sleeper))
-        .route("/channel", post(channel));
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+        .route("/channel", post(channel))
+        .route("/rediskeys", post(rediskeys));
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8123").await.unwrap();
     axum::serve(listener, app).await
 }

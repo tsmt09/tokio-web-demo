@@ -29,32 +29,50 @@
     <div id="cpu"></div>
     <h2>Task Generators</h2>
     <div id="sleeper">
-        <h2>Sleep Tasks generator</h2>
+        <h3>Sleep Tasks generator</h3>
+        <p>This generator generates N tasks which will sleep for the specified amount of seconds.</p>
         <form hx-post="/sleeper" hx-swap="none">
-            <label for="#tasks">Tasks:</label>
             <input id="tasks" name="tasks" value="10" />
-            <label for="#time">Time in seconds:</label>
+            <label for="#tasks">Tasks</label>
+            <br/>
             <input id="time" name="time" value="10" />
+            <label for="#time">seconds lifetime (per task)</label>
+            <br/>
             <button type="submit">Spawn</button>
         </form>
     </div>
     <div id="channel">
-        <h2>channel Tasks generator</h2>
+        <h3>channel Tasks generator</h3>
+        <p>This generator generates one pinging tasks and N reading tasks. As long as the pinging task is sending an internal "PING" command, the receivers will survive. After all PING requests are sent, a TERMINATE signal is send and all receiver tasks and writer tasks shut down.</p>
         <form hx-post="/channel" hx-swap="none">
-            <label for="#tasks">Receiver Tasks:</label>
             <input id="tasks" name="tasks" value="100" />
-            <label for="#time">Delay between ping:</label>
+            <label for="#tasks">Receiver Tasks</label>
+            <br/>
             <input id="time" name="time" value="10" />
-            <label for="#repeat">"PING" repeats, before "TERMINATE" is sent:</label>
+            <label for="#time">seconds delay between ping</label>
+            <br/>
             <input id="repeat" name="repeat" value="10" />
+            <label for="#repeat">repetitions of PING command, until a TERMINATE is send</label>
+            <br/>
+            <button type="submit">Spawn</button>
+        </form>
+    </div>
+    <div id="rediskeys">
+        <h3>redis keys</h3>
+        <p>This generator will first create N worker tasks, of which each will create X keys on a redis server. Then, another number N worker tasks are created which will then delete those keys.</p>
+        <form hx-post="/rediskeys" hx-swap="none">
+            <input id="tasks" name="tasks" value="10"/>
+            <label for="#tasks">Worker Tasks</label>
+            <br/>
+            <input id="keys" name="keys" value="100000"/>
+            <label for="#keys">Keys per Task</label>
+            <br/>
             <button type="submit">Spawn</button>
         </form>
     </div>
     <h2>Current statistics</h2>
     <div id="stats" hx-get="/stats" hx-trigger="load,every 2s">
     </div>
-
-
     <script>
         const socket = new WebSocket('ws://' + window.location.host + '/ws');
 
@@ -146,7 +164,6 @@
             const svg = d3.select(containerId).select("svg g");
 
             if (!svg.empty()) {
-                console.log(newData);
                 // Define the dimensions and margins as per the original graph creation
                 const margin = { top: 10, right: 30, bottom: 30, left: 60 },
                     width = 460 - margin.left - margin.right,

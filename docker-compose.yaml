@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  tokio-web-demo:
+    build: .
+    environment:
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "8123:8123"
+    depends_on:
+      - redis
+    networks:
+      - tokio-app
+
+  redis:
+    image: redis:latest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tokio-app
+
+networks:
+  tokio-app:
+    driver: bridge
