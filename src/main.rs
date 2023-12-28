@@ -23,7 +23,7 @@ async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
 }
 
 async fn handle_socket(mut socket: WebSocket) {
-    let mut interval = tokio::time::interval(Duration::from_millis(1000));
+    let mut interval = tokio::time::interval(Duration::from_millis(250));
     let metrics = tokio::runtime::Handle::current().metrics();
     let current_pid = sysinfo::get_current_pid().expect("cannot get pid");
     let mut system = sysinfo::System::new_all();
@@ -137,13 +137,25 @@ async fn rediskeys(Form(f): Form<RedisKeysForm>) {
     r.spawn().await;
 }
 
-#[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+fn main() {
     std::env::set_var("RUST_LOG", "DEBUG");
     // console_subscriber::init();
     pretty_env_logger::init_timed();
     log::info!("starting tokio web demo at http://127.0.0.1:8123");
 
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .worker_threads(1)
+        .max_blocking_threads(1)
+        .thread_keep_alive(Duration::from_millis(10))
+        .build()
+        .unwrap();
+    rt.block_on(async {
+        let _ = async_main().await;
+    });
+}
+
+async fn async_main() -> Result<(), std::io::Error> {
     let app = Router::new()
         .route(
             "/",

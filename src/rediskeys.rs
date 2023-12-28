@@ -20,8 +20,7 @@ impl RedisKeys {
             let handle = tokio::spawn(async move {
                 log::debug!("task {} inserting {} keys.", task_nr, keys);
                 let url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".into());
-                let client = redis::Client::open(url)
-                    .expect("cannot create redis client");
+                let client = redis::Client::open(url).expect("cannot create redis client");
                 let mut con = client
                     .get_async_connection()
                     .await
@@ -48,8 +47,7 @@ impl RedisKeys {
             let handle = tokio::spawn(async move {
                 log::debug!("task {} deleting {} keys.", task_nr, keys);
                 let url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".into());
-                let client = redis::Client::open(url)
-                    .expect("cannot create redis client");
+                let client = redis::Client::open(url).expect("cannot create redis client");
                 let mut con = client
                     .get_async_connection()
                     .await
