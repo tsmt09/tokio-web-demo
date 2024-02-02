@@ -23,7 +23,7 @@ async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
 }
 
 async fn handle_socket(mut socket: WebSocket) {
-    let mut interval = tokio::time::interval(Duration::from_millis(250));
+    let mut interval = tokio::time::interval(Duration::from_millis(500));
     let metrics = tokio::runtime::Handle::current().metrics();
     let current_pid = sysinfo::get_current_pid().expect("cannot get pid");
     let mut system = sysinfo::System::new_all();
