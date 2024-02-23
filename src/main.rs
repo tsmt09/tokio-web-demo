@@ -12,7 +12,7 @@ use axum::{
 use serde::Deserialize;
 use serde_json::json;
 use std::time::Duration;
-use sysinfo::{CpuExt, LoadAvg, ProcessExt, SystemExt};
+use sysinfo::{ProcessExt, SystemExt};
 
 #[derive(Template)]
 #[template(path = "base.html")]
@@ -53,52 +53,6 @@ async fn handle_socket(mut socket: WebSocket) {
             break;
         }
     }
-}
-
-#[derive(Template)]
-#[template(path = "stats.html")]
-struct Stats {
-    active_tasks: usize,
-    num_workers: usize,
-    num_blocking_threads: usize,
-    io_driver_ready_count: u64,
-    load: LoadAvg,
-    cpus: Vec<f32>,
-    mem: u64,
-    mem_free: u64,
-    mem_available: u64,
-}
-
-async fn stats() -> Html<String> {
-    let metrics = tokio::runtime::Handle::current().metrics();
-    let active_tasks = metrics.active_tasks_count();
-    let num_workers = metrics.num_workers();
-    let num_blocking_threads = metrics.num_blocking_threads();
-    let io_driver_ready_count = metrics.io_driver_ready_count();
-    let sysinfo = sysinfo::System::new_all();
-    let load = sysinfo.load_average();
-    let cpus: Vec<f32> = sysinfo
-        .cpus()
-        .iter()
-        .map(|cpu| cpu.cpu_usage().round())
-        .collect();
-    let mem = sysinfo.total_memory() / 1_000_000;
-    let mem_free = sysinfo.free_memory() / 1_000_000;
-    let mem_available = sysinfo.available_memory() / 1_000_000;
-    Stats {
-        active_tasks,
-        num_workers,
-        num_blocking_threads,
-        io_driver_ready_count,
-        load,
-        cpus,
-        mem,
-        mem_free,
-        mem_available,
-    }
-    .render()
-    .unwrap()
-    .into()
 }
 
 #[derive(Deserialize)]
@@ -162,7 +116,6 @@ async fn async_main() -> Result<(), std::io::Error> {
             get(|| async { Html::from(Index {}.render().unwrap()) }),
         )
         .route("/ws", get(websocket_handler))
-        .route("/stats", get(stats))
         .route("/sleeper", post(sleeper))
         .route("/channel", post(channel))
         .route("/rediskeys", post(rediskeys));
