@@ -1,6 +1,18 @@
+use axum::Form;
 use redis::{AsyncCommands, RedisResult};
-
+use serde::Deserialize;
 use tokio::task::JoinHandle;
+
+#[derive(Deserialize)]
+pub struct RedisKeysForm {
+    tasks: u64,
+    keys: u64,
+}
+
+pub async fn rediskeys(Form(f): Form<RedisKeysForm>) {
+    let r = RedisKeys::new(f.tasks, f.keys);
+    r.spawn().await;
+}
 
 // A simple struct that spawns a number of tokio tasks, which are just sleeping
 pub struct RedisKeys {

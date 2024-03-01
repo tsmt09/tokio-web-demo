@@ -1,4 +1,19 @@
+use axum::Form;
+use serde::Deserialize;
 use std::time::Duration;
+
+#[derive(Deserialize)]
+pub struct ChannelForm {
+    tasks: u64,
+    time: u64,
+    repeat: u64,
+}
+
+pub async fn channel(Form(f): Form<ChannelForm>) {
+    let time = Duration::from_secs(f.time);
+    let c = Channel::new(f.tasks, time, f.repeat);
+    c.spawn().await;
+}
 
 #[derive(PartialEq)]
 enum Message {

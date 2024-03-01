@@ -1,3 +1,4 @@
+mod blockers;
 mod channel;
 mod rediskeys;
 mod sleeper;
@@ -7,16 +8,18 @@ use axum::{
     extract::{ws::WebSocket, WebSocketUpgrade},
     response::{Html, IntoResponse},
     routing::{get, post},
-    Form, Router,
+    Router,
 };
-use serde::Deserialize;
 use serde_json::json;
 use std::time::Duration;
 use sysinfo::{ProcessExt, SystemExt};
 
 #[derive(Template)]
 #[template(path = "base.html")]
-struct Index {}
+struct Index {
+    threads: usize,
+    blocking_threads: usize,
+}
 
 async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
     ws.on_upgrade(handle_socket)
@@ -55,43 +58,8 @@ async fn handle_socket(mut socket: WebSocket) {
     }
 }
 
-#[derive(Deserialize)]
-struct SleeperForm {
-    tasks: u64,
-    time: u64,
-}
-
-async fn sleeper(Form(f): Form<SleeperForm>) {
-    let time = Duration::from_secs(f.time);
-    let s = sleeper::Sleeper::new(f.tasks, time);
-    s.spawn().await;
-}
-
-#[derive(Deserialize)]
-struct ChannelForm {
-    tasks: u64,
-    time: u64,
-    repeat: u64,
-}
-
-async fn channel(Form(f): Form<ChannelForm>) {
-    let time = Duration::from_secs(f.time);
-    let c = channel::Channel::new(f.tasks, time, f.repeat);
-    c.spawn().await;
-}
-
-#[derive(Deserialize)]
-struct RedisKeysForm {
-    tasks: u64,
-    keys: u64,
-}
-
-async fn rediskeys(Form(f): Form<RedisKeysForm>) {
-    let r = rediskeys::RedisKeys::new(f.tasks, f.keys);
-    r.spawn().await;
-}
-
 fn main() {
+    dotenv::dotenv().unwrap();
     std::env::set_var("RUST_LOG", "DEBUG");
     // console_subscriber::init();
     pretty_env_logger::init_timed();
@@ -99,8 +67,6 @@ fn main() {
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .worker_threads(1)
-        .max_blocking_threads(1)
         .thread_keep_alive(Duration::from_millis(10))
         .build()
         .unwrap();
@@ -113,12 +79,25 @@ async fn async_main() -> Result<(), std::io::Error> {
     let app = Router::new()
         .route(
             "/",
-            get(|| async { Html::from(Index {}.render().unwrap()) }),
+            get(|| async {
+                let metrics = tokio::runtime::Handle::current().metrics();
+                let threads = metrics.num_blocking_threads();
+                let blocking_threads = metrics.num_blocking_threads();
+                Html::from(
+                    Index {
+                        threads,
+                        blocking_threads,
+                    }
+                    .render()
+                    .unwrap(),
+                )
+            }),
         )
         .route("/ws", get(websocket_handler))
-        .route("/sleeper", post(sleeper))
-        .route("/channel", post(channel))
-        .route("/rediskeys", post(rediskeys));
+        .route("/sleeper", post(sleeper::sleeper))
+        .route("/channel", post(channel::channel))
+        .route("/blockers", post(blockers::blockers))
+        .route("/rediskeys", post(rediskeys::rediskeys));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8123").await.unwrap();
     axum::serve(listener, app).await
 }

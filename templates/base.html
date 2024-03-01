@@ -64,6 +64,32 @@
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseBlockers" aria-controls="collapseBlockers" aria-expanded="false">
+                        Blockers Generator
+                    </button>
+                </h2>
+                <div id="collapseBlockers" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
+                    <div class="accordion-body">
+                        <p>
+                            This generator create N tasks which will do <b>blocking</b> waits for M seconds. If you choose 
+                            the same amount of tasks as you have CPUs, this should block the UI for a moment. <i>this is for demonstrational purposes what should not be done with async rust.</i>
+                            </form>
+                        </p>
+                        <form hx-post="/blockers" hx-swap="none">
+                            <input id="tasks" name="tasks" value="10" class="form-control" />
+                            <label for="#tasks" class="form-label">Tasks</label>
+                            <br />
+                            <input id="time" name="time" value="5" class="form-control" />
+                            <label for="#keys" class="form-label">Seconds wait per Task</label>
+                            <br />
+                            <button class="btn btn-primary" type="submit">Spawn</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                         data-bs-target="#collapseChannel" aria-controls="collapseChannel" aria-expanded="false">
                         Channel Tasks generator
                     </button>
@@ -119,6 +145,11 @@
             </div>
         </div>
         <hr>
+        Info:
+        <ul>
+            <li>Threads: {{ threads }}</li>
+            <li>Blocking Thread: {{ blocking_threads }}</li>
+        </ul>
     </div>
     <script src="https://unpkg.com/htmx.org@1.9.9"
         integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
