@@ -23,17 +23,21 @@
         <h2>Current Tokio Tasks</h2>
         <div id="grid" class="row">
             <div class="col">
-                <h3>Tasks (<span id="tasks_num"></span>)</h3>
+                <h3>Tasks (#<span id="tasks_num"></span>)</h3>
                 <div id="tasks">
                 </div>
             </div>
             <div class="col">
-                <h3>Memory (<span id="memory_num"></span>)</h3>
+                <h3>Memory (<span id="memory_num"></span> MB)</h3>
                 <div id="memory"></div>
             </div>
             <div class="col">
-                <h3>CPU (<span id="cpu_num"></span>)</h3>
+                <h3>CPU (<span id="cpu_num"></span>%)</h3>
                 <div id="cpu"></div>
+            </div>
+            <div class="col">
+                <h3>Redis Keys (#<span id="keys_num"></span>)</h3>
+                <div id="keys"></div>
             </div>
         </div>
         <hr>
@@ -41,19 +45,19 @@
         <div class="accordion" id="accordionGenerators">
             <div class="accordion-item">
                 <h2 class="accordion-header">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#collapseSleep" aria-controls="collapseSleep" aria-expanded="true">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseSleep" aria-controls="collapseSleep" aria-expanded="false">
                         Sleep Tasks generator
                     </button>
                 </h2>
-                <div id="collapseSleep" class="accordion-collapse collapse show" data-bs-parent="#accordionGenerators">
+                <div id="collapseSleep" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
                     <div class="accordion-body">
                         <p>This generator generates N tasks which will sleep for the specified amount of seconds.</p>
                         <form hx-post="/sleeper" hx-swap="none">
-                            <input id="tasks" name="tasks" value="10" class="form-control" />
+                            <input id="tasks" name="tasks" value="10" min="1" max="1024" type="number" class="form-control" />
                             <label for="#tasks" class="form-label">Tasks</label>
                             <br />
-                            <input id="time" name="time" value="10" class="form-control" />
+                            <input id="time" name="time" value="10" min="1" max="60" type="number" class="form-control" />
                             <label for="#time" class="form-label">seconds lifetime (per task)</label>
                             <br />
                             <button class="btn btn-primary" type="submit">Spawn</button>
@@ -65,22 +69,25 @@
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                         data-bs-target="#collapseBlockers" aria-controls="collapseBlockers" aria-expanded="false">
-                        Blockers Generator
+                        Blockers Generator 🔴
                     </button>
                 </h2>
                 <div id="collapseBlockers" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
                     <div class="accordion-body">
                         <p>
                             This generator create N tasks which will do <b>blocking</b> waits for M seconds. If you choose 
-                            the same amount of tasks as you have CPUs, this should block the UI for a moment. <i>this is for demonstrational purposes what should not be done with async rust.</i>
+                            the same amount of tasks as you have CPUs, this should block the webserver for a moment. <i>this is for demonstrational purposes what should not be done with async rust.</i>
                             </form>
                         </p>
                         <form hx-post="/blockers" hx-swap="none">
-                            <input id="tasks" name="tasks" value="10" class="form-control" />
+                            <input id="tasks" name="tasks" value="10" min="1" max="1024" type="number" class="form-control" />
                             <label for="#tasks" class="form-label">Tasks</label>
                             <br />
-                            <input id="time" name="time" value="5" class="form-control" />
-                            <label for="#keys" class="form-label">Seconds wait per Task</label>
+                            <input id="time" name="time" value="5" min="1" max="60" type="number" class="form-control" />
+                            <label for="#time" class="form-label">Seconds wait per Task</label>
+                            <br />
+                            <input id="spawn_blocking" name="spawn_blocking" class="form-check-input" type="checkbox" />
+                            <label for="#spawn_blocking" class="form-label">use <i>spawn_blocking</i> (should not block the webserver)</label>
                             <br />
                             <button class="btn btn-primary" type="submit">Spawn</button>
                         </form>
@@ -104,13 +111,13 @@
                             TERMINATE
                             signal is send and all receiver tasks and writer tasks shut down.</p>
                         <form hx-post="/channel" hx-swap="none">
-                            <input id="tasks" name="tasks" value="100" class="form-control" />
+                            <input id="tasks" name="tasks" value="100" min="1" max="20000" type="number" class="form-control" />
                             <label for="#tasks" class="form-label">Receiver Tasks</label>
                             <br />
-                            <input id="time" name="time" value="10" class="form-control" />
+                            <input id="time" name="time" value="10" min="1" max="60" type="number" class="form-control" />
                             <label for="#time" class="form-label">seconds delay between ping</label>
                             <br />
-                            <input id="repeat" name="repeat" value="10" class="form-control" />
+                            <input id="repeat" name="repeat" value="10" min="1" max="60" type="number" class="form-control" />
                             <label for="#repeat" class="form-label">repetitions of PING command, until a TERMINATE is
                                 send</label>
                             <br />
@@ -132,11 +139,14 @@
                             server.
                             Then, another number N worker tasks are created which will then delete those keys.</p>
                         <form hx-post="/rediskeys" hx-swap="none">
-                            <input id="tasks" name="tasks" value="10" class="form-control" />
+                            <input id="tasks" name="tasks" value="10" min="1" max="60" type="number" class="form-control" />
                             <label for="#tasks" class="form-label">Worker Tasks</label>
                             <br />
-                            <input id="keys" name="keys" value="100000" class="form-control" />
+                            <input id="keys" name="keys" value="10000" min="1" max="512000" type="number" class="form-control" />
                             <label for="#keys" class="form-label">Keys per Task</label>
+                            <br />
+                            <input id="delete" name="delete" class="form-check-input" type="checkbox" />
+                            <label for="#delete" class="form-label">delete keys after insertion</label>
                             <br />
                             <button class="btn btn-primary" type="submit">Spawn</button>
                         </form>
@@ -167,35 +177,49 @@
         const task_data = [{ x: Date.now(), y: 0 }];
         const memory_data = [{ x: Date.now(), y: 0 }];
         const cpu_data = [{ x: Date.now(), y: 0 }];
-        const limit = 1000;
+        const keys_data = [{ x: Date.now(), y: 0 }];
+        const limit = 480;
         createLineGraph("#tasks", task_data);
         createLineGraph("#memory", memory_data);
         createLineGraph("#cpu", cpu_data);
+        createLineGraph("#keys", keys_data);
 
         socket.onmessage = (event) => {
             var message = JSON.parse(event.data);
             let time = new Date(message.time);
 
-            if (task_data.length >= limit) {
-                task_data.shift();
-            }
-            task_data.push({ x: time, y: message.tasks });
-            if (memory_data.length >= limit) {
-                memory_data.shift();
-            }
-            memory_data.push({ x: time, y: message.memory });
-            if (cpu_data.length >= limit) {
-                cpu_data.shift();
-            }
-            cpu_data.push({ x: time, y: message.cpu });
-            
             document.getElementById('tasks_num').innerHTML = message.tasks;
             document.getElementById('memory_num').innerHTML = message.memory;
             document.getElementById('cpu_num').innerHTML = Math.round(message.cpu * 1000) / 1000;
+            document.getElementById('keys_num').innerHTML = message.keys;
 
-            updateLineGraph("#tasks", task_data);
-            updateLineGraph("#memory", memory_data);
-            updateLineGraph("#cpu", cpu_data);
+            if(document.visibilityState == 'visible') {
+                if (task_data.length >= limit) {
+                    task_data.shift();
+                }
+                task_data.push({ x: time, y: message.tasks });
+
+                if (memory_data.length >= limit) {
+                    memory_data.shift();
+                }
+                memory_data.push({ x: time, y: message.memory });
+
+                if (cpu_data.length >= limit) {
+                    cpu_data.shift();
+                }
+                cpu_data.push({ x: time, y: message.cpu });
+
+                if (keys_data.length >= limit) {
+                    keys_data.shift();
+                }
+                keys_data.push({ x: time, y: message.keys });
+
+                updateLineGraph("#tasks", task_data);
+                updateLineGraph("#memory", memory_data);
+                updateLineGraph("#cpu", cpu_data);
+                updateLineGraph("#keys", keys_data);
+            }
+            
         };
 
         socket.onerror = (error) => {

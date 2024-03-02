@@ -10,6 +10,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use redis::{InfoDict, RedisResult};
 use serde_json::json;
 use std::time::Duration;
 use sysinfo::{ProcessExt, SystemExt};
@@ -25,10 +26,32 @@ async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
     ws.on_upgrade(handle_socket)
 }
 
+async fn get_redis_keys_from_result(response: &RedisResult<InfoDict>) -> u64 {
+    if let Ok(response) = response {
+        let db0: Option<String> = response.get("db0");
+        if let Some(db0) = db0 {
+            // unwraps "keys=123,bla=123,blabla=123..."
+            let x: Option<u64> = db0
+                .split_once(',')
+                .map(|(x, _)| x.split_once('=').map(|(_, x)| x.parse().ok()))
+                .unwrap_or(Some(Some(0)))
+                .unwrap_or(Some(0));
+            x.unwrap_or(0)
+        } else {
+            0
+        }
+    } else {
+        0
+    }
+}
+
 async fn handle_socket(mut socket: WebSocket) {
-    let mut interval = tokio::time::interval(Duration::from_millis(500));
+    let mut interval = tokio::time::interval(Duration::from_millis(250));
     let metrics = tokio::runtime::Handle::current().metrics();
     let current_pid = sysinfo::get_current_pid().expect("cannot get pid");
+    let url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".into());
+    let client = redis::Client::open(url).expect("cannot create redis client");
+    let mut conn = client.get_async_connection().await;
     let mut system = sysinfo::System::new_all();
     loop {
         interval.tick().await;
@@ -40,11 +63,19 @@ async fn handle_socket(mut socket: WebSocket) {
         let now = chrono::Utc::now();
         let memory = process.memory() / 1_000_000;
         let cpu = process.cpu_usage();
+        let keys = if let Ok(ref mut conn) = conn {
+            let response: RedisResult<InfoDict> =
+                redis::cmd("INFO").arg("KEYSPACE").query_async(conn).await;
+            get_redis_keys_from_result(&response).await
+        } else {
+            0
+        };
         let message = json!({
             "time": now.to_rfc3339(),
             "tasks": tasks, // Random value between 0-100
             "memory": memory,
-            "cpu": cpu
+            "cpu": cpu,
+            "keys": keys
         })
         .to_string();
 
