@@ -4,7 +4,7 @@ services:
     image: ghcr.io/tsmt09/tokio-web-demo:latest
     pull_policy: always
     environment:
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis://keydb:6379"
       WS_REFRESH_INTERVAL_MS: "100"
       RUST_LOG: DEBUG
     ports:
