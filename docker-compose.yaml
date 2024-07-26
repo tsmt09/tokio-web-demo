@@ -1,13 +1,15 @@
 version: '3.8'
 services:
   tokio-web-demo:
-    build: ghcr.io/tsmt09/tokio-web-demo:latest
+    image: ghcr.io/tsmt09/tokio-web-demo:latest
+    pull_policy: always
     environment:
       REDIS_URL: "redis://redis:6379"
       WS_REFRESH_INTERVAL_MS: "100"
+      RUST_LOG: DEBUG
     ports:
       - "8123:8123"
-    depends_oni:
+    depends_on:
       - keydb
     networks:
       - tokio-app

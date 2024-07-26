@@ -142,9 +142,7 @@ async fn async_main() -> Result<(), std::io::Error> {
         .route("/rediskeys", post(rediskeys::rediskeys))
         .route("/chat", post(chat::chat))
         .with_state(chat);
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8123")
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8123").await.unwrap();
     log::info!("starting tokio web demo at http://127.0.0.1:8123");
     axum::serve(listener, app).await
 }
