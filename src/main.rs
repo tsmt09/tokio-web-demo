@@ -97,9 +97,7 @@ async fn handle_socket(mut socket: WebSocket) {
 }
 
 fn main() {
-    dotenv::dotenv().unwrap();
-    std::env::set_var("RUST_LOG", "DEBUG");
-    // console_subscriber::init();
+    let _ = dotenv::dotenv();
     pretty_env_logger::init_timed();
 
     let rt = tokio::runtime::Builder::new_multi_thread()

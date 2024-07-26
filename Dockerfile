@@ -15,5 +15,10 @@ COPY ./.cargo ./.cargo
 # Build your application
 RUN cargo build --release
 
+FROM debian:bookworm
+
+WORKDIR /app
+COPY --from=builder /tokio-web-demo/target/release/tokio-web-demo .
+COPY .env.docker /app/.env
 # Set the startup command to run your binary
-CMD ["target/release/tokio-web-demo"]
+CMD ["/app/tokio-web-demo"]
