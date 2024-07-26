@@ -20,3 +20,5 @@ tokio = { version = "1.35.0", features = ["full", "rt"] }
 tokio-util = { version = "0.7.10", features = ["rt"] }
 redis = { version = "0.24.0", features = ["tokio-comp"] }
 dotenv = "0.15.0"
+seahash = { version = "4.1.0", features = ["use_std"] }
+futures = "0.3.30"

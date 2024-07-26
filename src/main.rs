@@ -1,5 +1,6 @@
 mod blockers;
 mod channel;
+mod chat;
 mod rediskeys;
 mod sleeper;
 
@@ -10,9 +11,10 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use chat::Chat;
 use redis::{InfoDict, RedisResult};
 use serde_json::json;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use sysinfo::{ProcessExt, SystemExt};
 
 #[derive(Template)]
@@ -20,6 +22,7 @@ use sysinfo::{ProcessExt, SystemExt};
 struct Index {
     threads: usize,
     blocking_threads: usize,
+    interval_ms: u64,
 }
 
 async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
@@ -46,7 +49,11 @@ async fn get_redis_keys_from_result(response: &RedisResult<InfoDict>) -> u64 {
 }
 
 async fn handle_socket(mut socket: WebSocket) {
-    let mut interval = tokio::time::interval(Duration::from_millis(250));
+    let interval_ms: u64 = std::env::var("WS_REFRESH_INTERVAL_MS")
+        .unwrap_or("1000".into())
+        .parse()
+        .unwrap_or(1000);
+    let mut interval = tokio::time::interval(Duration::from_millis(interval_ms));
     let metrics = tokio::runtime::Handle::current().metrics();
     let current_pid = sysinfo::get_current_pid().expect("cannot get pid");
     let url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".into());
@@ -94,7 +101,6 @@ fn main() {
     std::env::set_var("RUST_LOG", "DEBUG");
     // console_subscriber::init();
     pretty_env_logger::init_timed();
-    log::info!("starting tokio web demo at http://127.0.0.1:8123");
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -107,10 +113,15 @@ fn main() {
 }
 
 async fn async_main() -> Result<(), std::io::Error> {
+    let chat = Arc::new(Chat::new(1000));
     let app = Router::new()
         .route(
             "/",
             get(|| async {
+                let interval_ms: u64 = std::env::var("WS_REFRESH_INTERVAL_MS")
+                    .unwrap_or("1000".into())
+                    .parse()
+                    .unwrap_or(1000);
                 let metrics = tokio::runtime::Handle::current().metrics();
                 let threads = metrics.num_blocking_threads();
                 let blocking_threads = metrics.num_blocking_threads();
@@ -118,6 +129,7 @@ async fn async_main() -> Result<(), std::io::Error> {
                     Index {
                         threads,
                         blocking_threads,
+                        interval_ms,
                     }
                     .render()
                     .unwrap(),
@@ -125,10 +137,16 @@ async fn async_main() -> Result<(), std::io::Error> {
             }),
         )
         .route("/ws", get(websocket_handler))
+        .route("/ws/chat/:id", get(chat::websocket_handler))
         .route("/sleeper", post(sleeper::sleeper))
         .route("/channel", post(channel::channel))
         .route("/blockers", post(blockers::blockers))
-        .route("/rediskeys", post(rediskeys::rediskeys));
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8123").await.unwrap();
+        .route("/rediskeys", post(rediskeys::rediskeys))
+        .route("/chat", post(chat::chat))
+        .with_state(chat);
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:8123")
+        .await
+        .unwrap();
+    log::info!("starting tokio web demo at http://127.0.0.1:8123");
     axum::serve(listener, app).await
 }

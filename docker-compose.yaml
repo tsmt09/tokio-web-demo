@@ -7,14 +7,16 @@ services:
     ports:
       - "8123:8123"
     depends_on:
-      - redis
+      - keydb
     networks:
       - tokio-app
 
-  redis:
-    image: redis:latest
+  keydb:
+    image: eqalpha/keydb
+    ports:
+      - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "keydb-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
