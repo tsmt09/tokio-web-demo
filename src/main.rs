@@ -111,6 +111,7 @@ fn main() {
 }
 
 async fn async_main() -> Result<(), std::io::Error> {
+    console_subscriber::init();
     let chat = Arc::new(Chat::new(1000));
     let app = Router::new()
         .route(
