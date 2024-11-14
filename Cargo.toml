@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-askama = "0.12.1"
 axum = { version = "0.7.7", features = ["http2", "ws", "tracing"] }
 chrono = "0.4.38"
 console-subscriber = "0.4.1"
@@ -22,3 +21,5 @@ redis = { version = "0.24.0", features = ["tokio-comp"] }
 dotenv = "0.15.0"
 seahash = { version = "4.1.0", features = ["use_std"] }
 futures = "0.3.31"
+tera = "1.20.0"
+tower-http = { version = "0.6.1", features = ["fs"] }

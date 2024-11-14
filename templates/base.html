@@ -5,63 +5,15 @@
     <title>async runtime demo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <style>
-        .axis path
-        .line {
-            fill: none;
-            stroke: black;
-            shape-rendering: crispEdges;
-        }
-        .chat-container {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .chat-message {
-            margin-bottom: 10px;
-        }
-        .timestamp {
-            font-size: 0.8em;
-            color: #6c757d;
-        }
-    </style>
+    <link href="static/custom.css" rel="stylesheet">
 </head>
 
 <body>
-    <div id="container" class="container">
-        <small>built in love with rust, tokio, axum, htmx and d3</small>
-        <h1>Async runtime demo</h1>
-        <hr>
+    <div id="container" class="webroot">
+        <h1>async runtime demo</h1>
         <div id="grid" class="row">
-            <div class="col">
-                <h3>Tasks (#<span id="tasks_num"></span>)</h3>
-                <div id="tasks">
-                </div>
-            </div>
-            <div class="col">
-                <h3>Memory (<span id="memory_num"></span> MB)</h3>
-                <div id="memory"></div>
-            </div>
-        </div>
-        <div id="grid" class="row">
-            <div class="col">
-                <h3>CPU (<span id="cpu_num"></span>%)</h3>
-                <div id="cpu"></div>
-            </div>
-            <div class="col">
-                <h3>Redis Keys (#<span id="keys_num"></span>)</h3>
-                <div id="keys"></div>
-            </div>
-        </div>
-        <div id="grid" class="row">
-            <div class="col">
-                <h3>Sync threads</h3>
-                <div id="sync_threads"></div>
-            </div>
-        </div>
-        <hr>
-        <div id="grid" class="row">
-            <h2>Load Generators</h2>
-            <div class="col">
+            <div class="col-lg-3">
+                <h2>Load Generators</h2>
                 <div class="accordion" id="accordionGenerators">
                     <div class="accordion-item">
                         <h2 class="accordion-header">
@@ -70,14 +22,18 @@
                                 Sleep Tasks generator
                             </button>
                         </h2>
-                        <div id="collapseSleep" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
+                        <div id="collapseSleep" class="accordion-collapse collapse"
+                            data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
-                                <p>This generator generates N tasks which will sleep for the specified amount of seconds.</p>
+                                <p>This generator generates N tasks which will sleep for the specified amount of
+                                    seconds.</p>
                                 <form hx-post="/sleeper" hx-swap="none">
-                                    <input id="tasks" name="tasks" value="10" min="1" max="1000000" type="number" class="form-control" />
+                                    <input id="tasks" name="tasks" value="10" min="1" max="1000000" type="number"
+                                        class="form-control" />
                                     <label for="#tasks" class="form-label">Tasks</label>
                                     <br />
-                                    <input id="time" name="time" value="10" min="1" max="3600" type="number" class="form-control" />
+                                    <input id="time" name="time" value="10" min="1" max="3600" type="number"
+                                        class="form-control" />
                                     <label for="#time" class="form-label">seconds lifetime (per task)</label>
                                     <br />
                                     <button class="btn btn-primary" type="submit">Spawn</button>
@@ -92,14 +48,17 @@
                                 CPU Load Generator
                             </button>
                         </h2>
-                        <div id="collapseCpuGen" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
+                        <div id="collapseCpuGen" class="accordion-collapse collapse"
+                            data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
                                 <p>This generator generates random CPU load in N threads for T seconds.</p>
                                 <form hx-post="/cpuloadgen" hx-swap="none">
-                                    <input id="threads" name="threads" value="10" min="1" max="96" type="number" class="form-control" />
+                                    <input id="threads" name="threads" value="10" min="1" max="96" type="number"
+                                        class="form-control" />
                                     <label for="#threads" class="form-label">Threads</label>
                                     <br />
-                                    <input id="duration" name="duration" value="10" min="1" max="600" type="number" class="form-control" />
+                                    <input id="duration" name="duration" value="10" min="1" max="600" type="number"
+                                        class="form-control" />
                                     <label for="#duration" class="form-label">seconds lifetime (per task)</label>
                                     <br />
                                     <button class="btn btn-primary" type="submit">Spawn</button>
@@ -110,26 +69,35 @@
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#collapseBlockers" aria-controls="collapseBlockers" aria-expanded="false">
+                                data-bs-target="#collapseBlockers" aria-controls="collapseBlockers"
+                                aria-expanded="false">
                                 Blockers Generator 🔴
                             </button>
                         </h2>
-                        <div id="collapseBlockers" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
+                        <div id="collapseBlockers" class="accordion-collapse collapse"
+                            data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
                                 <p>
-                                    This generator create N tasks which will do <b>blocking</b> waits for M seconds. If you choose 
-                                    the same amount of tasks as you have CPUs, this should block the webserver for a moment. <i>this is for demonstrational purposes what should not be done with async rust.</i>
+                                    This generator create N tasks which will do <b>blocking</b> waits for M seconds. If
+                                    you choose
+                                    the same amount of tasks as you have CPUs, this should block the webserver for a
+                                    moment. <i>this is for demonstrational purposes what should not be done with async
+                                        rust.</i>
                                     </form>
                                 </p>
                                 <form hx-post="/blockers" hx-swap="none">
-                                    <input id="tasks" name="tasks" value="10" min="1" max="1024" type="number" class="form-control" />
+                                    <input id="tasks" name="tasks" value="10" min="1" max="1024" type="number"
+                                        class="form-control" />
                                     <label for="#tasks" class="form-label">Tasks</label>
                                     <br />
-                                    <input id="time" name="time" value="5" min="1" max="60" type="number" class="form-control" />
+                                    <input id="time" name="time" value="5" min="1" max="60" type="number"
+                                        class="form-control" />
                                     <label for="#time" class="form-label">Seconds wait per Task</label>
                                     <br />
-                                    <input id="spawn_blocking" name="spawn_blocking" class="form-check-input" type="checkbox" />
-                                    <label for="#spawn_blocking" class="form-label">use <i>spawn_blocking</i> (should not block the webserver)</label>
+                                    <input id="spawn_blocking" name="spawn_blocking" class="form-check-input"
+                                        type="checkbox" />
+                                    <label for="#spawn_blocking" class="form-label">use <i>spawn_blocking</i> (should
+                                        not block the webserver)</label>
                                     <br />
                                     <button class="btn btn-primary" type="submit">Spawn</button>
                                 </form>
@@ -143,24 +111,31 @@
                                 Channel Tasks generator
                             </button>
                         </h2>
-                        <div id="collapseChannel" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
+                        <div id="collapseChannel" class="accordion-collapse collapse"
+                            data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
 
-                                <p>This generator generates one pinging tasks and N reading tasks. As long as the pinging task
+                                <p>This generator generates one pinging tasks and N reading tasks. As long as the
+                                    pinging task
                                     is
                                     sending an
-                                    internal "PING" command, the receivers will survive. After all PING requests are sent, a
+                                    internal "PING" command, the receivers will survive. After all PING requests are
+                                    sent, a
                                     TERMINATE
                                     signal is send and all receiver tasks and writer tasks shut down.</p>
                                 <form hx-post="/channel" hx-swap="none">
-                                    <input id="tasks" name="tasks" value="100" min="1" max="20000" type="number" class="form-control" />
+                                    <input id="tasks" name="tasks" value="100" min="1" max="20000" type="number"
+                                        class="form-control" />
                                     <label for="#tasks" class="form-label">Receiver Tasks</label>
                                     <br />
-                                    <input id="time" name="time" value="10" min="1" max="60" type="number" class="form-control" />
+                                    <input id="time" name="time" value="10" min="1" max="60" type="number"
+                                        class="form-control" />
                                     <label for="#time" class="form-label">seconds delay between ping</label>
                                     <br />
-                                    <input id="repeat" name="repeat" value="10" min="1" max="60" type="number" class="form-control" />
-                                    <label for="#repeat" class="form-label">repetitions of PING command, until a TERMINATE is
+                                    <input id="repeat" name="repeat" value="10" min="1" max="60" type="number"
+                                        class="form-control" />
+                                    <label for="#repeat" class="form-label">repetitions of PING command, until a
+                                        TERMINATE is
                                         send</label>
                                     <br />
                                     <button class="btn btn-primary" type="submit">Spawn</button>
@@ -175,16 +150,21 @@
                                 Redis Keys Generator
                             </button>
                         </h2>
-                        <div id="collapseRedis" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
+                        <div id="collapseRedis" class="accordion-collapse collapse"
+                            data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
-                                <p>This generator will first create N worker tasks, of which each will create X keys on a redis
+                                <p>This generator will first create N worker tasks, of which each will create X keys on
+                                    a redis
                                     server.
-                                    Then, another number N worker tasks are created which will then delete those keys.</p>
+                                    Then, another number N worker tasks are created which will then delete those keys.
+                                </p>
                                 <form hx-post="/rediskeys" hx-swap="none">
-                                    <input id="tasks" name="tasks" value="10" min="1" max="60" type="number" class="form-control" />
+                                    <input id="tasks" name="tasks" value="10" min="1" max="60" type="number"
+                                        class="form-control" />
                                     <label for="#tasks" class="form-label">Worker Tasks</label>
                                     <br />
-                                    <input id="keys" name="keys" value="10000" min="1" max="512000" type="number" class="form-control" />
+                                    <input id="keys" name="keys" value="10000" min="1" max="512000" type="number"
+                                        class="form-control" />
                                     <label for="#keys" class="form-label">Keys per Task</label>
                                     <br />
                                     <input id="delete" name="delete" class="form-check-input" type="checkbox" />
@@ -197,191 +177,72 @@
                     </div>
                 </div>
             </div>
-            <div class="col">
-                <div class="card">
-                    <div class="card-header">
-                        Chat
+            <div class="col-lg-6">
+                <h2>Stats</h2>
+                <div class="container">
+                    <div class="row">
+                        <div class="col">
+                            <p>
+                                CPU: <span id="cpu_stats"></span>%
+                            </p>
+                            <p>
+                                Memory: <span id="memory_stats"></span>MB
+                            </p>
+                            <p>
+                                Redis Keys: #<span id="redis_keys_stats"></span>
+                            </p>
+                        </div>
+                        <div class="col">
+                            <p>
+                                Tasks: #<span id="tasks_stats"></span>
+                            </p>
+                            <p>
+                                Sync Threads: #<span id="sync_threads_stats"></span>
+                            </p>
+                            <p>
+                                Last Update: <span id="last_update_stats"></span>
+                            </p>
+                        </div>
                     </div>
+                    <div class="row">
+                        <div class="col">
+                            <h4>Charts</h4>
+                            <canvas id="tasks_chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <h2>Chat</h2>
+                <div class="card">
                     <div class="card-body" id="chat">
                         <form hx-post="/chat" hx-target="#chat">
-                            <input id="name" name="name" type="text" class="form-control"/>
+                            <input id="name" name="name" type="text" class="form-control" />
                             <label for="#tasks" class="form-label">Username</label>
-                            <br/>
+                            <br />
                             <button class="btn btn-primary" type="submit">Join Chat</button>
-                        </form>                 
+                        </form>
                     </div>
                 </div>
             </div>
         </div>
         <hr>
-        Info:
-        <ul>
-            <li>Threads: {{ threads }}</li>
-            <li>Blocking Thread: {{ blocking_threads }}</li>
-        </ul>
+        <small>built in love with rust, tokio, tera, htmx and chart.js</small>
     </div>
     <script src="https://unpkg.com/htmx.org@1.9.9"
         integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
         crossorigin="anonymous"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js"></script>
-    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.27.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@0.1.1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
         integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
         integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
         crossorigin="anonymous"></script>
-    <script>
-        const socket = new WebSocket('ws://' + window.location.host + '/ws');
-        const startTime = Date.now();
-        const task_data = [{ x: Date.now(), y: 0 }];
-        const memory_data = [{ x: Date.now(), y: 0 }];
-        const cpu_data = [{ x: Date.now(), y: 0 }];
-        const keys_data = [{ x: Date.now(), y: 0 }];
-        const sync_threads_data = [{ x: Date.now(), y: 0 }];
-        const limit = {{ 300000 / interval_ms }};
-        createLineGraph("#tasks", task_data);
-        createLineGraph("#memory", memory_data);
-        createLineGraph("#cpu", cpu_data);
-        createLineGraph("#keys", keys_data);
-        createLineGraph("#sync_threads", sync_threads_data);
-
-        socket.onmessage = (event) => {
-            var message = JSON.parse(event.data);
-            let time = new Date(message.time);
-
-            document.getElementById('tasks_num').innerHTML = message.tasks;
-            document.getElementById('memory_num').innerHTML = message.memory;
-            document.getElementById('cpu_num').innerHTML = Math.round(message.cpu * 1000) / 1000;
-            document.getElementById('keys_num').innerHTML = message.keys;
-
-            if(document.visibilityState == 'visible') {
-                if (task_data.length >= limit) {
-                    task_data.shift();
-                }
-                task_data.push({ x: time, y: message.tasks });
-
-                if (memory_data.length >= limit) {
-                    memory_data.shift();
-                }
-                memory_data.push({ x: time, y: message.memory });
-
-                if (cpu_data.length >= limit) {
-                    cpu_data.shift();
-                }
-                cpu_data.push({ x: time, y: message.cpu });
-
-                if (keys_data.length >= limit) {
-                    keys_data.shift();
-                }
-                keys_data.push({ x: time, y: message.keys });
-
-                if (sync_threads_data.length >= limit) {
-                    sync_threads_data.shift();
-                }
-                sync_threads_data.push({ x: time, y: message.sync_threads });
-
-
-                updateLineGraph("#tasks", task_data);
-                updateLineGraph("#memory", memory_data);
-                updateLineGraph("#cpu", cpu_data);
-                updateLineGraph("#keys", keys_data);
-                updateLineGraph("#sync_threads", sync_threads_data);
-            }
-            
-        };
-
-        socket.onerror = (error) => {
-            console.error('WebSocket Error:', error);
-        };
-
-        socket.onclose = () => {
-            console.log('WebSocket connection closed');
-        };
-
-        // Function to create a line graph using D3.js
-        function createLineGraph(containerId, data) {
-            // Set the dimensions and margins of the graph
-            const margin = { top: 10, right: 30, bottom: 30, left: 60 },
-                width = 520 - margin.left - margin.right,
-                height = 200 - margin.top - margin.bottom;
-
-            // Append the SVG object to the specified container
-            const svg = d3.select(containerId)
-                .append("svg")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-
-            // Add X axis and assign a class 'x-axis'
-            const x = d3.scaleTime()
-                .domain([startTime, d3.max(data, d => d.x)])
-                .range([0, width]);
-            svg.append("g")
-                .attr("transform", `translate(0,${height})`)
-                .attr("class", "x-axis")
-                .call(d3.axisBottom(x));
-
-            // Add Y axis and assign a class 'y-axis'
-            const y = d3.scaleLinear()
-                .domain([0, d3.max(data, d => d.y)])
-                .range([height, 0]);
-            svg.append("g")
-                .attr("class", "y-axis")
-                .call(d3.axisLeft(y));
-
-            // Add the line and assign a class 'line'
-            svg.append("path")
-                .datum(data)
-                .attr("class", "line")
-                .attr("fill", "none")
-                .attr("stroke", "steelblue")
-                .attr("stroke-width", 1.5)
-                .attr("d", d3.line()
-                    .x(d => x(d.x))
-                    .y(d => y(d.y))
-                );
-        }
-        function updateLineGraph(containerId, newData) {
-            // Select the existing SVG container
-            const svg = d3.select(containerId).select("svg g");
-
-            if (!svg.empty()) {
-                // Define the dimensions and margins as per the original graph creation
-                const margin = { top: 10, right: 30, bottom: 30, left: 60 },
-                    width = 520 - margin.left - margin.right,
-                    height = 200 - margin.top - margin.bottom;
-
-                // Update the X and Y scales to reflect the new data range
-                const x = d3.scaleTime()
-                    .domain([d3.min(newData, d => d.x), d3.max(newData, d => d.x)])
-                    .range([0, width]);
-                const y = d3.scaleLinear()
-                    .domain([d3.min(newData, d => d.y), d3.max(newData, d => d.y)])
-                    .range([height, 0]);
-
-                // Update the X and Y axes
-                svg.select(".x-axis")
-                    .transition({{ interval_ms }})
-                    .call(d3.axisBottom(x));
-                svg.select(".y-axis")
-                    .transition({{ interval_ms }})
-                    .call(d3.axisLeft(y));
-
-                // Redraw the line with the new data
-                svg.select(".line")
-                    .datum(newData)
-                    .transition({{ interval_ms }})
-                    .attr("d", d3.line()
-                        .x(d => x(d.x))
-                        .y(d => y(d.y))
-                    );
-            } else {
-                console.log("Graph container not found or graph not initialized.");
-            }
-        }
-    </script>
+    <script src="static/custom.js"></script>
 </body>
 
 </html>

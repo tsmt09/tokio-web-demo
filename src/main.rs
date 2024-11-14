@@ -4,9 +4,9 @@ mod chat;
 mod cpu_loadgen;
 mod rediskeys;
 mod sleeper;
-use askama::Template;
 use axum::{
-    extract::{ws::WebSocket, WebSocketUpgrade},
+    body::HttpBody,
+    extract::{ws::WebSocket, State, WebSocketUpgrade},
     response::{Html, IntoResponse},
     routing::{get, post},
     Router,
@@ -16,14 +16,8 @@ use redis::{InfoDict, RedisResult};
 use serde_json::json;
 use std::{sync::Arc, time::Duration};
 use sysinfo::{ProcessExt, SystemExt};
-
-#[derive(Template)]
-#[template(path = "base.html")]
-struct Index {
-    threads: usize,
-    blocking_threads: usize,
-    interval_ms: u64,
-}
+use tera::{Context, Tera};
+use tokio_util::context;
 
 async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
     ws.on_upgrade(handle_socket)
@@ -71,6 +65,8 @@ async fn handle_socket(mut socket: WebSocket) {
         let now = chrono::Utc::now();
         let memory = process.memory() / 1_000_000;
         let cpu = process.cpu_usage();
+        tokio::time::sleep(Duration::from_millis(5)).await;
+        let cpu = process.cpu_usage();
         let keys = if let Ok(ref mut conn) = conn {
             let response: RedisResult<InfoDict> =
                 redis::cmd("INFO").arg("KEYSPACE").query_async(conn).await;
@@ -115,25 +111,22 @@ async fn async_main() -> Result<(), std::io::Error> {
     console_subscriber::init();
     let chat = Arc::new(Chat::new(1000));
     let app = Router::new()
+        .nest_service("/static", tower_http::services::ServeDir::new("static"))
         .route(
             "/",
             get(|| async {
+                let tera = Tera::new("templates/**/*").unwrap();
                 let interval_ms: u64 = std::env::var("WS_REFRESH_INTERVAL_MS")
                     .unwrap_or("1000".into())
                     .parse()
                     .unwrap_or(1000);
                 let metrics = tokio::runtime::Handle::current().metrics();
-                let threads = metrics.num_workers();
-                let blocking_threads = metrics.num_blocking_threads();
-                Html::from(
-                    Index {
-                        threads,
-                        blocking_threads,
-                        interval_ms,
-                    }
-                    .render()
-                    .unwrap(),
-                )
+                let mut context = Context::new();
+                context.insert("threads", &metrics.num_workers());
+                context.insert("blocking_threads", &metrics.num_blocking_threads());
+                context.insert("interval_ms", &interval_ms);
+                let rendered = tera.render("base.html", &context).unwrap();
+                Html::from(rendered)
             }),
         )
         .route("/ws", get(websocket_handler))

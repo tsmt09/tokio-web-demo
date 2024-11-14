@@ -37,7 +37,7 @@ pub async fn chat(State(chat): State<Arc<Chat>>, Form(f): Form<Chatform>) -> imp
                 <form ws-send>
                     <div class="input-group">
                         <input name="chat_message" type="text" class="form-control" placeholder="Type your message...">
-                        <button class="btn btn-primary" type="button">Send</button>
+                        <button class="btn btn-primary" type="submit">Send</button>
                     </div>
                 </form>
             </div>
