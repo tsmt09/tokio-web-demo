@@ -9,7 +9,6 @@ WORKDIR /tokio-web-demo
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
 COPY ./src ./src
-COPY ./templates ./templates
 COPY ./.cargo ./.cargo
 
 # Build your application
@@ -19,6 +18,8 @@ FROM debian:bookworm
 
 WORKDIR /app
 COPY --from=builder /tokio-web-demo/target/release/tokio-web-demo .
+COPY ./templates ./templates
+COPY ./static ./static
 COPY .env.docker /app/.env
 # Set the startup command to run your binary
 CMD ["/app/tokio-web-demo"]
