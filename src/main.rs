@@ -5,8 +5,7 @@ mod cpu_loadgen;
 mod rediskeys;
 mod sleeper;
 use axum::{
-    body::HttpBody,
-    extract::{ws::WebSocket, State, WebSocketUpgrade},
+    extract::{ws::WebSocket, WebSocketUpgrade},
     response::{Html, IntoResponse},
     routing::{get, post},
     Router,
@@ -17,7 +16,6 @@ use serde_json::json;
 use std::{sync::Arc, time::Duration};
 use sysinfo::{ProcessExt, SystemExt};
 use tera::{Context, Tera};
-use tokio_util::context;
 
 async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
     ws.on_upgrade(handle_socket)
@@ -64,7 +62,7 @@ async fn handle_socket(mut socket: WebSocket) {
         let sync_threads = metrics.num_blocking_threads();
         let now = chrono::Utc::now();
         let memory = process.memory() / 1_000_000;
-        let cpu = process.cpu_usage();
+        let _cpu = process.cpu_usage();
         tokio::time::sleep(Duration::from_millis(5)).await;
         let cpu = process.cpu_usage();
         let keys = if let Ok(ref mut conn) = conn {
