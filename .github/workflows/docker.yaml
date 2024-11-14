@@ -5,6 +5,10 @@ on:
     branches: [ "main" ]
     paths:
       - "**.rs"
+      - "**.html"
+      - "**.css"
+      - "**.js"
+      - "Dockerfile"
 
 env:
   REGISTRY: ghcr.io

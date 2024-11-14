@@ -7,7 +7,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // paint charts
     paintTasksChart();
     // Start Websocket
-    const socket = new WebSocket('ws://' + window.location.host + '/ws');
+    let ws_protocol = "wss://";
+    if (window.location.protocol === 'http:') {
+        ws_protocol = "ws://";
+    }
+    const socket = new WebSocket(ws_protocol + window.location.host + '/ws');
     socket.onmessage = (event) => {
         var message = JSON.parse(event.data);
         let time = new Date(message.time);
