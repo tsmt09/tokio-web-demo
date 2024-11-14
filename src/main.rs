@@ -1,9 +1,9 @@
 mod blockers;
 mod channel;
 mod chat;
+mod cpu_loadgen;
 mod rediskeys;
 mod sleeper;
-
 use askama::Template;
 use axum::{
     extract::{ws::WebSocket, WebSocketUpgrade},
@@ -66,7 +66,8 @@ async fn handle_socket(mut socket: WebSocket) {
         let process = system
             .process(current_pid)
             .expect("cannot get current process from system");
-        let tasks = metrics.active_tasks_count();
+        let tasks = metrics.num_alive_tasks();
+        let sync_threads = metrics.num_blocking_threads();
         let now = chrono::Utc::now();
         let memory = process.memory() / 1_000_000;
         let cpu = process.cpu_usage();
@@ -79,7 +80,8 @@ async fn handle_socket(mut socket: WebSocket) {
         };
         let message = json!({
             "time": now.to_rfc3339(),
-            "tasks": tasks, // Random value between 0-100
+            "tasks": tasks,
+            "sync_threads": sync_threads,
             "memory": memory,
             "cpu": cpu,
             "keys": keys
@@ -102,7 +104,6 @@ fn main() {
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .thread_keep_alive(Duration::from_millis(10))
         .build()
         .unwrap();
     rt.block_on(async {
@@ -122,7 +123,7 @@ async fn async_main() -> Result<(), std::io::Error> {
                     .parse()
                     .unwrap_or(1000);
                 let metrics = tokio::runtime::Handle::current().metrics();
-                let threads = metrics.num_blocking_threads();
+                let threads = metrics.num_workers();
                 let blocking_threads = metrics.num_blocking_threads();
                 Html::from(
                     Index {
@@ -138,6 +139,7 @@ async fn async_main() -> Result<(), std::io::Error> {
         .route("/ws", get(websocket_handler))
         .route("/ws/chat/:id", get(chat::websocket_handler))
         .route("/sleeper", post(sleeper::sleeper))
+        .route("/cpuloadgen", post(cpu_loadgen::load_gen_threads))
         .route("/channel", post(channel::channel))
         .route("/blockers", post(blockers::blockers))
         .route("/rediskeys", post(rediskeys::rediskeys))

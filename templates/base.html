@@ -52,6 +52,12 @@
                 <div id="keys"></div>
             </div>
         </div>
+        <div id="grid" class="row">
+            <div class="col">
+                <h3>Sync threads</h3>
+                <div id="sync_threads"></div>
+            </div>
+        </div>
         <hr>
         <div id="grid" class="row">
             <h2>Load Generators</h2>
@@ -68,11 +74,33 @@
                             <div class="accordion-body">
                                 <p>This generator generates N tasks which will sleep for the specified amount of seconds.</p>
                                 <form hx-post="/sleeper" hx-swap="none">
-                                    <input id="tasks" name="tasks" value="10" min="1" max="1024" type="number" class="form-control" />
+                                    <input id="tasks" name="tasks" value="10" min="1" max="1000000" type="number" class="form-control" />
                                     <label for="#tasks" class="form-label">Tasks</label>
                                     <br />
-                                    <input id="time" name="time" value="10" min="1" max="60" type="number" class="form-control" />
+                                    <input id="time" name="time" value="10" min="1" max="3600" type="number" class="form-control" />
                                     <label for="#time" class="form-label">seconds lifetime (per task)</label>
+                                    <br />
+                                    <button class="btn btn-primary" type="submit">Spawn</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseCpuGen" aria-controls="collapseCpuGen" aria-expanded="false">
+                                CPU Load Generator
+                            </button>
+                        </h2>
+                        <div id="collapseCpuGen" class="accordion-collapse collapse" data-bs-parent="#accordionGenerators">
+                            <div class="accordion-body">
+                                <p>This generator generates random CPU load in N threads for T seconds.</p>
+                                <form hx-post="/cpuloadgen" hx-swap="none">
+                                    <input id="threads" name="threads" value="10" min="1" max="96" type="number" class="form-control" />
+                                    <label for="#threads" class="form-label">Threads</label>
+                                    <br />
+                                    <input id="duration" name="duration" value="10" min="1" max="600" type="number" class="form-control" />
+                                    <label for="#duration" class="form-label">seconds lifetime (per task)</label>
                                     <br />
                                     <button class="btn btn-primary" type="submit">Spawn</button>
                                 </form>
@@ -210,11 +238,13 @@
         const memory_data = [{ x: Date.now(), y: 0 }];
         const cpu_data = [{ x: Date.now(), y: 0 }];
         const keys_data = [{ x: Date.now(), y: 0 }];
+        const sync_threads_data = [{ x: Date.now(), y: 0 }];
         const limit = {{ 300000 / interval_ms }};
         createLineGraph("#tasks", task_data);
         createLineGraph("#memory", memory_data);
         createLineGraph("#cpu", cpu_data);
         createLineGraph("#keys", keys_data);
+        createLineGraph("#sync_threads", sync_threads_data);
 
         socket.onmessage = (event) => {
             var message = JSON.parse(event.data);
@@ -246,10 +276,17 @@
                 }
                 keys_data.push({ x: time, y: message.keys });
 
+                if (sync_threads_data.length >= limit) {
+                    sync_threads_data.shift();
+                }
+                sync_threads_data.push({ x: time, y: message.sync_threads });
+
+
                 updateLineGraph("#tasks", task_data);
                 updateLineGraph("#memory", memory_data);
                 updateLineGraph("#cpu", cpu_data);
                 updateLineGraph("#keys", keys_data);
+                updateLineGraph("#sync_threads", sync_threads_data);
             }
             
         };
