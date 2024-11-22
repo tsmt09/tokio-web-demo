@@ -67,15 +67,12 @@ async fn async_main() -> Result<(), std::io::Error> {
         Duration::from_millis(updater_interval()),
         message_count_max(),
     ));
-    let app = Router::new()
+    let chat = Router::new()
+        .route("/", post(chat::chat))
+        .route("/ws/:id", get(chat::websocket_handler))
+        .with_state(chat);
+    let mut app = Router::new()
         .nest_service("/static", tower_http::services::ServeDir::new("static"))
-        .nest(
-            "/chat",
-            Router::new()
-                .route("/", post(chat::chat))
-                .route("/ws/:id", get(chat::websocket_handler))
-                .with_state(chat),
-        )
         .route("/", get(root))
         .route("/stats/ws", get(websocket_handler))
         .route("/sleeper", post(sleeper::sleeper))
@@ -84,6 +81,9 @@ async fn async_main() -> Result<(), std::io::Error> {
         .route("/blockers", post(blockers::blockers))
         .route("/rediskeys", post(rediskeys::rediskeys))
         .with_state(stats_collector);
+    if chat_enabled() {
+        app = app.nest("/chat", chat);
+    }
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8123").await.unwrap();
     log::info!("starting tokio web demo at http://127.0.0.1:8123");
     axum::serve(listener, app).await
@@ -95,6 +95,7 @@ async fn root(State(stats_collector): State<Arc<StatsCollector>>) -> impl IntoRe
     let mut context = Context::new();
     let sysinfo = get_systeminformation();
     log::debug!("{:?}", sysinfo);
+    context.insert("chat", &chat_enabled());
     context.insert("sysinfo", &sysinfo);
     context.insert(
         "statsHistory",
@@ -133,4 +134,14 @@ fn updater_interval() -> u64 {
         .unwrap_or("1000".into())
         .parse()
         .unwrap_or(1000)
+}
+
+fn chat_enabled() -> bool {
+    matches!(
+        std::env::var("CHAT")
+            .map(|s| s.to_lowercase())
+            .unwrap_or("false".into())
+            .as_str(),
+        "true" | "1"
+    )
 }
