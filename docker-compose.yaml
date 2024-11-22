@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   tokio-web-demo:
     image: ghcr.io/tsmt09/tokio-web-demo:latest

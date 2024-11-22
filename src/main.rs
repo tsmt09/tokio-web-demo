@@ -14,7 +14,7 @@ use chat::Chat;
 use redis::{InfoDict, RedisResult};
 use serde_json::json;
 use std::{sync::Arc, time::Duration};
-use sysinfo::{ProcessExt, SystemExt};
+use sysinfo::{CpuExt, ProcessExt, System, SystemExt};
 use tera::{Context, Tera};
 
 async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
@@ -42,9 +42,9 @@ async fn get_redis_keys_from_result(response: &RedisResult<InfoDict>) -> u64 {
 
 async fn handle_socket(mut socket: WebSocket) {
     let interval_ms: u64 = std::env::var("WS_REFRESH_INTERVAL_MS")
-        .unwrap_or("1000".into())
+        .unwrap_or("500".into())
         .parse()
-        .unwrap_or(1000);
+        .unwrap_or(500);
     let mut interval = tokio::time::interval(Duration::from_millis(interval_ms));
     let metrics = tokio::runtime::Handle::current().metrics();
     let current_pid = sysinfo::get_current_pid().expect("cannot get pid");
@@ -53,18 +53,24 @@ async fn handle_socket(mut socket: WebSocket) {
     let mut conn = client.get_async_connection().await;
     let mut system = sysinfo::System::new_all();
     loop {
+        system.refresh_process(current_pid);
+        system.refresh_cpu();
+        system.refresh_memory();
         interval.tick().await;
         system.refresh_process(current_pid);
+        system.refresh_cpu();
+        system.refresh_memory();
         let process = system
             .process(current_pid)
             .expect("cannot get current process from system");
         let tasks = metrics.num_alive_tasks();
         let sync_threads = metrics.num_blocking_threads();
         let now = chrono::Utc::now();
-        let memory = process.memory() / 1_000_000;
-        let _cpu = process.cpu_usage();
-        tokio::time::sleep(Duration::from_millis(5)).await;
-        let cpu = process.cpu_usage();
+        let memory = process.memory() / (1024 * 1024);
+        let memory_sys = system.used_memory() / (1024 * 1024);
+        let cpu_global = system.global_cpu_info().cpu_usage();
+        let cpu_process =
+            ((process.cpu_usage() / system.cpus().len() as f32) * 1000.0).round() / 1000.0;
         let keys = if let Ok(ref mut conn) = conn {
             let response: RedisResult<InfoDict> =
                 redis::cmd("INFO").arg("KEYSPACE").query_async(conn).await;
@@ -77,7 +83,9 @@ async fn handle_socket(mut socket: WebSocket) {
             "tasks": tasks,
             "sync_threads": sync_threads,
             "memory": memory,
-            "cpu": cpu,
+            "memory_sys": memory_sys,
+            "cpu": cpu_global,
+            "cpu_proc": cpu_process,
             "keys": keys
         })
         .to_string();
@@ -118,11 +126,16 @@ async fn async_main() -> Result<(), std::io::Error> {
                     .unwrap_or("1000".into())
                     .parse()
                     .unwrap_or(1000);
-                let metrics = tokio::runtime::Handle::current().metrics();
+                let message_count_max: u64 = std::env::var("WS_CHART_MESSAGE_COUNT_MAX")
+                    .unwrap_or("2048".into())
+                    .parse()
+                    .unwrap_or(2048);
                 let mut context = Context::new();
-                context.insert("threads", &metrics.num_workers());
-                context.insert("blocking_threads", &metrics.num_blocking_threads());
+                let sysinfo = get_systeminformation();
+                log::debug!("{:?}", sysinfo);
                 context.insert("interval_ms", &interval_ms);
+                context.insert("sysinfo", &sysinfo);
+                context.insert("messageCountMax", &message_count_max);
                 let rendered = tera.render("base.html", &context).unwrap();
                 Html::from(rendered)
             }),
@@ -139,4 +152,20 @@ async fn async_main() -> Result<(), std::io::Error> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8123").await.unwrap();
     log::info!("starting tokio web demo at http://127.0.0.1:8123");
     axum::serve(listener, app).await
+}
+
+fn get_systeminformation() -> serde_json::Value {
+    let mut system = System::new_all();
+    let metrics = tokio::runtime::Handle::current().metrics();
+    system.refresh_all();
+    json!({
+        "cpu": system.global_cpu_info(),
+        "cpus": system.cpus(),
+        "mem": system.total_memory(),
+        "uptime": system.uptime(),
+        "os": system.long_os_version(),
+        "hostname": system.host_name(),
+        "workers": metrics.num_workers(),
+        "spawned_tasks": metrics.spawned_tasks_count()
+    })
 }

@@ -10,10 +10,9 @@
 
 <body>
     <div id="container" class="webroot">
-        <h1>async runtime demo</h1>
         <div id="grid" class="row">
             <div class="col-lg-3">
-                <h2>Load Generators</h2>
+                <h3>Load Generators</h3>
                 <div class="accordion" id="accordionGenerators">
                     <div class="accordion-item">
                         <h2 class="accordion-header">
@@ -178,15 +177,31 @@
                 </div>
             </div>
             <div class="col-lg-6">
-                <h2>Stats</h2>
+                <h3>Live Statistics</h3>
                 <div class="container">
                     <div class="row">
                         <div class="col">
+                            <h4>Charts</h4>
+                            <canvas id="tasks_chart"></canvas>
+                            <canvas id="cpu_chart"></canvas>
+                            <canvas id="mem_chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <h4>System Information:</h4>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
                             <p>
-                                CPU: <span id="cpu_stats"></span>%
+                                Hostname: {{ sysinfo.hostname }}
                             </p>
                             <p>
-                                Memory: <span id="memory_stats"></span>MB
+                                OS: {{ sysinfo.os }} 
+                            </p>
+                            <p>
+                                Runtime Workers: {{ sysinfo.workers }}                               
                             </p>
                             <p>
                                 Redis Keys: #<span id="redis_keys_stats"></span>
@@ -194,26 +209,23 @@
                         </div>
                         <div class="col">
                             <p>
-                                Tasks: #<span id="tasks_stats"></span>
+                                CPU Brand: {{ sysinfo.cpu.brand }}                                 
                             </p>
                             <p>
-                                Sync Threads: #<span id="sync_threads_stats"></span>
+                                CPU Count: {{ sysinfo.cpus | length }} @ {{ sysinfo.cpu.frequency }} MHz                          
+                            </p>
+                            <p>
+                                Total Memory: {{ sysinfo.mem / (1024 * 1024) | round }} MB                                
                             </p>
                             <p>
                                 Last Update: <span id="last_update_stats"></span>
                             </p>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col">
-                            <h4>Charts</h4>
-                            <canvas id="tasks_chart"></canvas>
-                        </div>
-                    </div>
                 </div>
             </div>
             <div class="col-lg-3">
-                <h2>Chat</h2>
+                <h3>Chat</h3>
                 <div class="card">
                     <div class="card-body" id="chat">
                         <form hx-post="/chat" hx-target="#chat">
@@ -229,6 +241,7 @@
         <hr>
         <small>built in love with rust, tokio, tera, htmx and chart.js</small>
     </div>
+    <span id="messageCountMax" value="{{ messageCountMax }}" hidden></span>
     <script src="https://unpkg.com/htmx.org@1.9.9"
         integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
         crossorigin="anonymous"></script>
