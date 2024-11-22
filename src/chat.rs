@@ -32,7 +32,7 @@ pub async fn chat(State(chat): State<Arc<Chat>>, Form(f): Form<Chatform>) -> imp
     };
     let reply = format!(
         r##"
-        <div id="openChat" hx-ext="ws" ws-connect="/ws/chat/{user_hash}">
+        <div id="openChat" hx-ext="ws" ws-connect="/chat/ws/{user_hash}">
             <div class="mb-3">
                 <form ws-send>
                     <div class="input-group">
