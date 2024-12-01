@@ -12,17 +12,18 @@ use axum::{
     Router,
 };
 use chat::Chat;
+use minijinja::{context, path_loader};
 use redis::{InfoDict, RedisResult};
 use serde_json::json;
 use stats_collector::StatsCollector;
 use std::{sync::Arc, time::Duration};
 use sysinfo::{CpuExt, ProcessExt, System, SystemExt};
-use tera::{Context, Tera};
 
 async fn websocket_handler(
     ws: WebSocketUpgrade,
-    State(stats_collector): State<Arc<StatsCollector>>,
+    State(app): State<Arc<AppState>>,
 ) -> impl IntoResponse {
+    let stats_collector = Arc::clone(&app.stats);
     ws.on_upgrade(|socket| handle_socket(socket, stats_collector))
 }
 
@@ -60,17 +61,27 @@ fn main() {
     });
 }
 
+struct AppState {
+    stats: Arc<StatsCollector>,
+    chat: Arc<Chat>,
+    minij: Arc<minijinja::Environment<'static>>,
+}
+
 async fn async_main() -> Result<(), std::io::Error> {
     console_subscriber::init();
     let chat = Arc::new(Chat::new(1000));
-    let stats_collector = Arc::new(StatsCollector::new(
+    let stats = Arc::new(StatsCollector::new(
         Duration::from_millis(updater_interval()),
         message_count_max(),
     ));
+    let mut minij = minijinja::Environment::new();
+    minij.set_loader(path_loader("templates"));
+    let minij = Arc::new(minij);
+    let state = Arc::new(AppState { stats, chat, minij });
     let chat = Router::new()
         .route("/", post(chat::chat))
         .route("/ws/:id", get(chat::websocket_handler))
-        .with_state(chat);
+        .with_state(Arc::clone(&state));
     let mut app = Router::new()
         .nest_service("/static", tower_http::services::ServeDir::new("static"))
         .route("/", get(root))
@@ -80,7 +91,7 @@ async fn async_main() -> Result<(), std::io::Error> {
         .route("/channel", post(channel::channel))
         .route("/blockers", post(blockers::blockers))
         .route("/rediskeys", post(rediskeys::rediskeys))
-        .with_state(stats_collector);
+        .with_state(state);
     if chat_enabled() {
         app = app.nest("/chat", chat);
     }
@@ -89,20 +100,22 @@ async fn async_main() -> Result<(), std::io::Error> {
     axum::serve(listener, app).await
 }
 
-async fn root(State(stats_collector): State<Arc<StatsCollector>>) -> impl IntoResponse {
-    let tera = Tera::new("templates/**/*").unwrap();
-    let stats_history = stats_collector.get_history().await;
-    let mut context = Context::new();
-    let sysinfo = get_systeminformation();
-    log::debug!("{:?}", sysinfo);
-    context.insert("chat", &chat_enabled());
-    context.insert("sysinfo", &sysinfo);
-    context.insert(
-        "statsHistory",
-        &serde_json::to_string(&stats_history).unwrap(),
-    );
-    context.insert("messageCountMax", &message_count_max());
-    let rendered = tera.render("base.html", &context).unwrap();
+async fn root(State(app): State<Arc<AppState>>) -> impl IntoResponse {
+    // TODO: Temporary, has to be replaced with auto reloader somewhere
+    let mut minij = minijinja::Environment::new();
+    minij.set_loader(path_loader("templates"));
+    // TODO
+    let ctx = context! {
+        chat => &chat_enabled(),
+        sysinfo => &get_systeminformation(),
+        statsHistory => &serde_json::to_string(&app.stats.get_history().await).unwrap(),
+        messageCountMax => &message_count_max()
+    };
+    let rendered = minij
+        .get_template("base.html")
+        .unwrap()
+        .render(ctx)
+        .unwrap();
     Html::from(rendered)
 }
 

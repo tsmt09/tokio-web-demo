@@ -4,14 +4,17 @@ services:
     pull_policy: always
     environment:
       REDIS_URL: "redis://keydb:6379"
-      WS_REFRESH_INTERVAL_MS: "100"
-      RUST_LOG: DEBUG
     ports:
       - "8123:8123"
     depends_on:
       - keydb
     networks:
       - tokio-app
+    deploy:
+      resources:
+        limits:
+          cpus: 1.0
+          memory: 512M
 
   keydb:
     image: eqalpha/keydb

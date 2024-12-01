@@ -16,18 +16,20 @@ use std::{
 };
 use tokio::sync::RwLock;
 
+use crate::AppState;
+
 #[derive(Deserialize)]
 pub struct Chatform {
     name: String,
 }
 
-pub async fn chat(State(chat): State<Arc<Chat>>, Form(f): Form<Chatform>) -> impl IntoResponse {
+pub async fn chat(State(app): State<Arc<AppState>>, Form(f): Form<Chatform>) -> impl IntoResponse {
     // join chat
     if f.name.to_lowercase() == "system" {
         return "Username 'system' is not allowed".into();
     }
     let user_hash = seahash::hash(f.name.as_bytes());
-    if let Err(e) = chat.join(f.name.clone()).await {
+    if let Err(e) = app.chat.join(f.name.clone()).await {
         return e.into();
     };
     let reply = format!(
@@ -50,10 +52,11 @@ pub async fn chat(State(chat): State<Arc<Chat>>, Form(f): Form<Chatform>) -> imp
 }
 
 pub async fn websocket_handler(
-    State(chat): State<Arc<Chat>>,
+    State(app): State<Arc<AppState>>,
     Path(id): Path<u64>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
+    let chat = Arc::clone(&app.chat);
     ws.on_upgrade(move |socket| handle_socket(socket, chat, id))
 }
 
