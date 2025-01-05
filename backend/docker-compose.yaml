@@ -1,0 +1,33 @@
+services:
+  tokio-web-demo:
+    image: ghcr.io/tsmt09/tokio-web-demo:latest
+    pull_policy: always
+    environment:
+      REDIS_URL: "redis://keydb:6379"
+    ports:
+      - "8123:8123"
+    depends_on:
+      - keydb
+    networks:
+      - tokio-app
+    deploy:
+      resources:
+        limits:
+          cpus: 1.0
+          memory: 512M
+
+  keydb:
+    image: eqalpha/keydb
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "keydb-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tokio-app
+
+networks:
+  tokio-app:
+    driver: bridge
