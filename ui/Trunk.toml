@@ -1,0 +1,18 @@
+[build]
+filehash = false
+
+[[proxy]]
+backend = "http://localhost:8123/api" # Address to proxy requests to
+ws = false                               # Use WebSocket for this proxy
+insecure = true                          # Disable certificate validation
+no_system_proxy = false                   # Disable system proxy
+rewrite = "/api"                              # Strip the given prefix off paths
+no_redirect = false                       # Disable following redirects of proxy responses
+
+[[proxy]]
+backend = "http://localhost:8123/ws" # Address to proxy requests to
+ws = false                               # Use WebSocket for this proxy
+insecure = true                          # Disable certificate validation
+no_system_proxy = false                   # Disable system proxy
+rewrite = "/ws"                              # Strip the given prefix off paths
+no_redirect = false                       # Disable following redirects of proxy responses

@@ -1,0 +1,23 @@
+[package]
+name = "tokio_web_demo_ui"
+version = "0.1.0"
+edition = "2021"
+authors = ["Tobias Schmitt <tobias.schmitt@mailbox.org>"]
+include = ["LICENSE-APACHE", "LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+
+[dependencies]
+egui = "0.30"
+eframe = { version = "0.30", default-features = false, features = [
+    "accesskit",     # make egui compatible with screen readers. note: adds a lot of dependencies.
+    "default_fonts", # embed the default egui fonts.
+    "wgpu",          # use the glow rendering backend. alternative: "wgpu".
+    "persistence",   # enable restoring app state when restarting the app.
+    #"wasm32"         # web assembly
+] }
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+wasm-bindgen-futures = "0.4"
+web-sys = "0.3.70"           # to access the DOM (to hide the loading text)
+ehttp = "0.5.0"
+poll-promise = { version = "0.3", default-features = false }
+serde_json = "1.0.134"
