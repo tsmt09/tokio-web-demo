@@ -13,11 +13,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.location.protocol === 'http:') {
         ws_protocol = "ws://";
     }
-    const socket = new WebSocket(ws_protocol + window.location.host + '/stats/ws');
-    socket.onmessage = onWsMessage;
+    const statusSocket = new WebSocket(ws_protocol + window.location.host + '/stats/ws');
+    statusSocket.onmessage = onStatusMessage;
+    loadSoccerField();
 });
 
-function onWsMessage(event) {
+function onStatusMessage(event) {
     var message = JSON.parse(event.data);
     let time = new Date(message.time);
 
@@ -222,4 +223,77 @@ function paintMemChart(statsHistory) {
         }
     });
     charts['mem_chart'] = mem_chart;
+}
+
+function loadSoccerField() {
+    let field = document.getElementById('soccerField');
+    let fieldRect = field.getBoundingClientRect();
+    let fieldX = fieldRect.x;
+    let fieldY = fieldRect.y;
+
+    const ball = document.getElementById('ball');
+    let ws_protocol = "wss://";
+    if (window.location.protocol === 'http:') {
+        ws_protocol = "ws://";
+    }
+    const socket = new WebSocket(ws_protocol + window.location.host + '/soccer_field/ws');
+    socket.onmessage = function (event) {
+        let doc = JSON.parse(event.data);
+        ball.setAttribute('cy', doc.ball[0]);
+        ball.setAttribute('cx', doc.ball[1]);
+        for (let [key, value] of Object.entries(doc.players)) {
+            let player = document.getElementById(`player_${key}`);
+            if (player == undefined) {
+                var newElement = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+                newElement.setAttribute("r", 8);
+                newElement.setAttribute("id", `player_${key}`);
+                newElement.setAttribute("class", `player`);
+                field.appendChild(newElement);
+                player = newElement;
+            }
+            player.setAttribute('cy', value[0]);
+            player.setAttribute('cx', value[1]);
+        }
+
+        // cleanup all circles
+        let circles = field.getElementsByTagName('circle');
+        for (let i = 0; i < circles.length; i++) {
+            let id = circles[i].getAttribute("id");
+            if (id == "ball" || id == null) {
+                continue;
+            }
+            id = id.split("_")[1];
+            if (!(id in doc.players)) {
+                console.log(id);
+                circles[i].remove();
+            }
+        }
+    }
+
+    let targetX = 0; // Target X position (mouse position)
+    let targetY = 0; // Target Y position (mouse position)
+
+    let old_targetX = 0;
+    let old_targetY = 0;
+
+    setInterval(() => {
+        if(targetX != old_targetX && targetY != old_targetY) {
+            socket.send(`[${targetY},${targetX}]`);
+            old_targetX = targetX;
+            old_targetY = targetY;
+        }
+    }, 50); // Update every 100 milliseconds
+
+    // Update target position on mouse move
+    document.addEventListener('mousemove', (event) => {
+        let fieldRect = field.getBoundingClientRect();
+        fieldX = fieldRect.x;
+        fieldY = fieldRect.y;
+        if((event.clientX >= fieldX && event.clientX < fieldX + 400)
+        && (event.clientY >= fieldY && event.clientY < fieldY + 800)) {
+            // if target is in rect
+            targetX = event.clientX - fieldX;
+            targetY = event.clientY - fieldY;
+        }
+    });
 }

@@ -4,7 +4,9 @@ mod chat;
 mod cpu_loadgen;
 mod rediskeys;
 mod sleeper;
+mod soccer_field;
 mod stats_collector;
+
 use axum::{
     extract::{ws::WebSocket, State, WebSocketUpgrade},
     response::{Html, IntoResponse},
@@ -15,6 +17,7 @@ use chat::Chat;
 use minijinja::{context, path_loader};
 use redis::{InfoDict, RedisResult};
 use serde_json::json;
+use soccer_field::SoccerFieldThread;
 use stats_collector::StatsCollector;
 use std::{sync::Arc, time::Duration};
 use sysinfo::{CpuExt, ProcessExt, System, SystemExt};
@@ -65,6 +68,7 @@ struct AppState {
     stats: Arc<StatsCollector>,
     chat: Arc<Chat>,
     minij: Arc<minijinja::Environment<'static>>,
+    soccer_thread: Arc<SoccerFieldThread>,
 }
 
 async fn async_main() -> Result<(), std::io::Error> {
@@ -76,8 +80,14 @@ async fn async_main() -> Result<(), std::io::Error> {
     ));
     let mut minij = minijinja::Environment::new();
     minij.set_loader(path_loader("templates"));
+    let soccer_thread = Arc::new(soccer_field::SoccerFieldThread::spawn());
     let minij = Arc::new(minij);
-    let state = Arc::new(AppState { stats, chat, minij });
+    let state = Arc::new(AppState {
+        stats,
+        chat,
+        minij,
+        soccer_thread,
+    });
     let chat = Router::new()
         .route("/", post(chat::chat))
         .route("/ws/:id", get(chat::websocket_handler))
@@ -85,12 +95,14 @@ async fn async_main() -> Result<(), std::io::Error> {
     let mut app = Router::new()
         .nest_service("/static", tower_http::services::ServeDir::new("static"))
         .route("/", get(root))
+        .route("/soccer_field", get(soccer_field::get_field))
         .route("/stats/ws", get(websocket_handler))
         .route("/sleeper", post(sleeper::sleeper))
         .route("/cpuloadgen", post(cpu_loadgen::load_gen_threads))
         .route("/channel", post(channel::channel))
         .route("/blockers", post(blockers::blockers))
         .route("/rediskeys", post(rediskeys::rediskeys))
+        .route("/soccer_field/ws", get(soccer_field::websocket_handler))
         .with_state(state);
     if chat_enabled() {
         app = app.nest("/chat", chat);

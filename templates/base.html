@@ -6,6 +6,42 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link href="static/custom.css" rel="stylesheet">
+    <style>
+        /* SOCCER FIELD STYLES */
+        svg {
+            /* border: 1px solid black; */
+            background-color: green;
+            /* Green background for the field */
+            fill: green;
+            touch-action: none;
+        }
+
+        #field {
+            background-color: green;
+            fill: green;
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        .player {
+            fill: blue;
+            /* Color of the player */
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        .line {
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        .ball {
+            fill: white;
+            /* Color of the ball */
+            stroke: black;
+            stroke-width: 2;
+        }
+    </style>
 </head>
 
 <body>
@@ -173,10 +209,13 @@
                                 </form>
                             </div>
                         </div>
+                        <div>
+                            <a href="soccer_field">Soccer Field</a>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-6" id="middle_column">
                 <h3>Live Statistics</h3>
                 <div class="container">
                     <div class="row">
@@ -237,7 +276,37 @@
                         </form>
                     </div>
                 </div>
+
                 {% endif %}
+                <div class="card">
+                    <div class="card-body" id="soccerFieldCard">
+                    <svg width="400" height="800" id="soccerField">
+                        <rect width="100%" height="100%" fill="#4CAF50" />
+
+                        <!-- Outer boundary -->
+                        <rect x="0" y="0" width="400" height="800" class="line" />
+
+                        <!-- Center line -->
+                        <line x1="0" y1="400" x2="400" y2="400" class="line" />
+
+                        <!-- Center circle -->
+                        <circle cx="200" cy="400" r="50" fill="none" class="line" />
+
+                        <!-- Penalty areas -->
+                        <rect x="150" y="0" width="100" height="60" fill="none" class="line" />
+                        <rect x="150" y="740" width="100" height="60" fill="none" class="line" />
+
+                        <!-- Goals -->
+                        <rect x="175" y="0" width="50" height="10" fill="none" class="line" />
+                        <rect x="175" y="790" width="50" height="10" fill="none" class="line" />
+
+                        <!-- Player -->
+
+                        <!-- Ball -->
+                        <circle class="ball" cx="200" cy="400" r="8" id="ball" />
+                    </svg>
+                    </div>
+                </div>
             </div>
         </div>
         <hr>
