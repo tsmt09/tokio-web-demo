@@ -58,10 +58,6 @@ fn update_pos_with_speed(pos: i16, speed: f32) -> i16 {
 }
 
 impl Coordinate {
-    fn apply_speed(&mut self, speed: Speed) {
-        self.0 = update_pos_with_speed(self.0, speed.0);
-        self.1 = update_pos_with_speed(self.1, speed.1);
-    }
     fn apply_speed_with_boundaries(&mut self, speed: Speed) {
         self.0 = std::cmp::max(
             8,
@@ -93,7 +89,7 @@ impl Player {
     }
     fn update(&mut self) {
         let (distance, angle) = self.target.distance_angle(&self.position);
-        if (distance > 3.0) {
+        if distance > 3.0 {
             let distance_speed = if distance * PLAYER_ACCELERATION > MAX_PLAYER_SPEED {
                 distance * PLAYER_ACCELERATION
             } else {
@@ -148,13 +144,13 @@ impl SoccerField {
         for (_, player) in self.players.iter_mut() {
             player.update();
         }
-        self.checkCollisions();
+        self.check_collisions();
     }
 
-    fn checkCollisions(&mut self) {
+    fn check_collisions(&mut self) {
         for (_, player) in &self.players {
             let (distance, angle) = player.position.distance_angle(&self.ball.position);
-            if (distance < 18.0) {
+            if distance < 18.0 {
                 self.ball.pushed_by(angle, &player);
             }
         }
@@ -215,15 +211,13 @@ enum PlayerUpdates {
 enum FieldUpdates {
     Positions(PositionsList),
     Joined(u16, u16),
-    Leave(u16),
 }
 
 pub struct SoccerFieldThread {
-    pub handle: JoinHandle<()>,
-    exit: oneshot::Sender<bool>,
-    pub field_updates: broadcast::Sender<FieldUpdates>,
-    //                           ( id,   y,   x)
-    pub player_updates: mpsc::Sender<PlayerUpdates>,
+    _handle: JoinHandle<()>,
+    _exit: oneshot::Sender<bool>,
+    field_updates: broadcast::Sender<FieldUpdates>,
+    player_updates: mpsc::Sender<PlayerUpdates>,
 }
 
 impl SoccerFieldThread {
@@ -237,8 +231,8 @@ impl SoccerFieldThread {
         let handle = std::thread::spawn(move || Self::thread(fu_tx.clone(), pu_rx, exit_rx));
 
         SoccerFieldThread {
-            handle,
-            exit,
+            _handle: handle,
+            _exit: exit,
             field_updates,
             player_updates,
         }
@@ -254,7 +248,7 @@ impl SoccerFieldThread {
         let mut last_debug_print = Instant::now();
         loop {
             std::thread::sleep(std::time::Duration::from_millis(1000 / TICKRATE as u64));
-            if let Ok(exit) = exit.try_recv() {
+            if let Ok(_) = exit.try_recv() {
                 return;
             }
             if Instant::now().duration_since(last_debug_print) > Duration::from_secs(1) {
@@ -263,7 +257,7 @@ impl SoccerFieldThread {
             }
             field.update();
             if field_updates.receiver_count() > 0 {
-                field_updates.send(FieldUpdates::Positions(field.positions()));
+                let _ = field_updates.send(FieldUpdates::Positions(field.positions()));
             }
             if player_updates.sender_strong_count() > 0 {
                 while let Ok(update) = player_updates.try_recv() {
@@ -276,7 +270,7 @@ impl SoccerFieldThread {
                         PlayerUpdates::Join(token) => {
                             let id = field.player_join();
                             log::info!("Join request by {} as id {}", token, id);
-                            field_updates.send(FieldUpdates::Joined(token, id));
+                            let _ = field_updates.send(FieldUpdates::Joined(token, id));
                         }
                         PlayerUpdates::Leave(id) => {
                             field.player_leave(id);
@@ -312,7 +306,10 @@ async fn handle_socket(ws: WebSocket, soccer_thread: Arc<SoccerFieldThread>) {
     let local_token: u16 = rand::thread_rng().gen();
     // join field
     let player_updates = soccer_thread.player_updates.clone();
-    player_updates.send(PlayerUpdates::Join(local_token)).await;
+    player_updates
+        .send(PlayerUpdates::Join(local_token))
+        .await
+        .unwrap();
     // wait for id
     let mut receiver = soccer_thread.field_updates.subscribe();
     let mut waiting = true;
@@ -339,7 +336,8 @@ async fn handle_socket(ws: WebSocket, soccer_thread: Arc<SoccerFieldThread>) {
                 FieldUpdates::Positions(poslist) => {
                     ws_send
                         .send(Message::Text(serde_json::to_string(&poslist).unwrap()))
-                        .await;
+                        .await
+                        .unwrap();
                 }
                 _ => {}
             }
@@ -354,13 +352,13 @@ async fn handle_socket(ws: WebSocket, soccer_thread: Arc<SoccerFieldThread>) {
                 Ok(Message::Text(json)) => {
                     let (yf, xf): (f32, f32) = serde_json::from_str(&json).unwrap();
                     let (y, x): (i16, i16) = (yf.round() as i16, xf.round() as i16);
-                    player_updates
+                    let _ = player_updates
                         .send(PlayerUpdates::Position(my_id, y, x))
                         .await;
                 }
                 Ok(Message::Close(_)) => {
                     log::warn!("Socket for user '{}' closed by client", my_id);
-                    player_updates.send(PlayerUpdates::Leave(my_id)).await;
+                    let _ = player_updates.send(PlayerUpdates::Leave(my_id)).await;
                     return;
                 }
                 Ok(_) => {
@@ -368,6 +366,8 @@ async fn handle_socket(ws: WebSocket, soccer_thread: Arc<SoccerFieldThread>) {
                 }
                 Err(error) => {
                     log::error!("websocket error: {:?}", error);
+                    let _ = player_updates.send(PlayerUpdates::Leave(my_id)).await;
+                    return;
                 }
             }
         }

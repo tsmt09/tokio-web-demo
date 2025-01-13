@@ -15,12 +15,11 @@ use axum::{
 };
 use chat::Chat;
 use minijinja::{context, path_loader};
-use redis::{InfoDict, RedisResult};
 use serde_json::json;
 use soccer_field::SoccerFieldThread;
 use stats_collector::StatsCollector;
 use std::{sync::Arc, time::Duration};
-use sysinfo::{CpuExt, ProcessExt, System, SystemExt};
+use sysinfo::{System, SystemExt};
 
 async fn websocket_handler(
     ws: WebSocketUpgrade,
