@@ -24,7 +24,7 @@ const FIELD_BOUNDARY_Y: i16 = 800;
 const FIELD_BOUNDARY_X: i16 = 400;
 const MAX_PLAYER_SPEED: f32 = 5.0;
 const PLAYER_ACCELERATION: f32 = 0.1;
-const TICKRATE: u16 = 100;
+const TICKRATE: u16 = 200;
 
 #[derive(Debug)]
 struct SoccerField {
@@ -93,9 +93,9 @@ impl Player {
         self.target.0 = y;
         self.target.1 = x;
     }
-    fn update(&mut self) {
+    fn update(&mut self, ball: &mut Ball) {
         let (distance, angle) = self.target.distance_angle(&self.position);
-        if distance.abs() > 5.0 {
+        if distance > 5.0 {
             let distance_speed = if distance * PLAYER_ACCELERATION > MAX_PLAYER_SPEED {
                 distance * PLAYER_ACCELERATION
             } else {
@@ -104,6 +104,11 @@ impl Player {
             self.speed.0 = distance_speed * angle.sin();
             self.speed.1 = distance_speed * angle.cos();
             self.position.apply_speed_with_boundaries(self.speed);
+            // check collision
+            let (distance, angle) = self.position.distance_angle(&ball.position);
+            if distance < 18.0 {
+                ball.pushed_by(angle, &self);
+            }
         }
     }
 }
@@ -139,28 +144,18 @@ impl Ball {
         }
     }
     fn pushed_by(&mut self, angle: f32, player: &Player) {
-        self.speed.0 = 1.8 * player.speed.0 * angle.sin();
-        self.speed.1 = 1.8 * player.speed.1 * angle.cos();
+        self.speed.0 = player.speed.0 * angle.sin();
+        self.speed.1 = player.speed.1 * angle.cos();
+        self.update_position();
     }
 }
 
 impl SoccerField {
     fn update(&mut self) {
-        self.ball.update();
         for (_, player) in self.players.iter_mut() {
-            player.update();
+            player.update(&mut self.ball);
         }
-        self.check_collisions();
-    }
-
-    fn check_collisions(&mut self) {
-        for (_, player) in &self.players {
-            let (distance, angle) = player.position.distance_angle(&self.ball.position);
-            if distance < 18.0 {
-                log::debug!("{:?} {:?}", self.ball, player);
-                self.ball.pushed_by(angle, &player);
-            }
-        }
+        self.ball.update();
     }
 
     fn new() -> Self {
