@@ -9,6 +9,7 @@ mod stats_collector;
 
 use axum::{
     extract::{ws::WebSocket, State, WebSocketUpgrade},
+    http::Response,
     response::{Html, IntoResponse},
     routing::{get, post},
     Router,
@@ -97,12 +98,15 @@ async fn async_main() -> Result<(), std::io::Error> {
         .route("/soccer_field", get(soccer_field::get_field))
         .route("/stats/ws", get(websocket_handler))
         .route("/sleeper", post(sleeper::sleeper))
-        .route("/cpuloadgen", post(cpu_loadgen::load_gen_threads))
         .route("/channel", post(channel::channel))
-        .route("/blockers", post(blockers::blockers))
-        .route("/rediskeys", post(rediskeys::rediskeys))
         .route("/soccer_field/ws", get(soccer_field::websocket_handler))
         .with_state(state);
+    if chat_enabled() {
+        app = app
+            .route("/cpuloadgen", post(cpu_loadgen::load_gen_threads))
+            .route("/blockers", post(blockers::blockers))
+            .route("/rediskeys", post(rediskeys::rediskeys));
+    }
     if chat_enabled() {
         app = app.nest("/chat", chat);
     }
@@ -128,7 +132,10 @@ async fn root(State(app): State<Arc<AppState>>) -> impl IntoResponse {
         .unwrap()
         .render(ctx)
         .unwrap();
-    Html::from(rendered)
+    Response::builder()
+        .header("Cache-Control", "no-store")
+        .body(rendered)
+        .unwrap()
 }
 
 fn get_systeminformation() -> serde_json::Value {
