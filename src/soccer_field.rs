@@ -24,7 +24,7 @@ const FIELD_BOUNDARY_Y: i16 = 800;
 const FIELD_BOUNDARY_X: i16 = 400;
 const MAX_PLAYER_SPEED: f32 = 5.0;
 const PLAYER_ACCELERATION: f32 = 0.1;
-const TICKRATE: u16 = 200;
+const TICKRATE: u16 = 30;
 
 #[derive(Debug)]
 struct SoccerField {
