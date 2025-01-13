@@ -47,7 +47,7 @@
 <body>
     <div id="container" class="webroot">
         <div id="grid" class="row">
-            <div class="col-lg-3">
+            <div class="col-lg-3 col-md-3">
                 <h3>Load Generators</h3>
                 <div class="accordion" id="accordionGenerators">
                     <div class="accordion-item">
@@ -60,8 +60,7 @@
                         <div id="collapseSleep" class="accordion-collapse collapse"
                             data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
-                                <p>This generator generates N tasks which will sleep for the specified amount of
-                                    seconds.</p>
+                                <p>This generator generates N tasks which will utilize the <b>asynchronous</b> sleep function for the specified amount of seconds.</p>
                                 <form hx-post="/sleeper" hx-swap="none">
                                     <input id="tasks" name="tasks" value="10" min="1" max="1000000" type="number"
                                         class="form-control" />
@@ -76,6 +75,7 @@
                             </div>
                         </div>
                     </div>
+                    {% if chat %}
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
@@ -86,7 +86,7 @@
                         <div id="collapseCpuGen" class="accordion-collapse collapse"
                             data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
-                                <p>This generator generates random CPU load in N threads for T seconds.</p>
+                                <p>This generator generates random CPU load in a specific number of synchronous threads for a specific number of seconds.</p>
                                 <form hx-post="/cpuloadgen" hx-swap="none">
                                     <input id="threads" name="threads" value="10" min="1" max="96" type="number"
                                         class="form-control" />
@@ -139,6 +139,7 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
@@ -150,16 +151,12 @@
                             data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
 
-                                <p>This generator generates one pinging tasks and N reading tasks. As long as the
-                                    pinging task
-                                    is
-                                    sending an
-                                    internal "PING" command, the receivers will survive. After all PING requests are
-                                    sent, a
-                                    TERMINATE
+                                <p>This generator generates one pinging tasks and multiple reading tasks. As long as the
+                                    pinging task is sending an internal "PING" command, the receivers will survive.
+                                    After all PING requests are sent, a TERMINATE
                                     signal is send and all receiver tasks and writer tasks shut down.</p>
                                 <form hx-post="/channel" hx-swap="none">
-                                    <input id="tasks" name="tasks" value="100" min="1" max="20000" type="number"
+                                    <input id="tasks" name="tasks" value="100" min="1" max="1000000" type="number"
                                         class="form-control" />
                                     <label for="#tasks" class="form-label">Receiver Tasks</label>
                                     <br />
@@ -167,7 +164,7 @@
                                         class="form-control" />
                                     <label for="#time" class="form-label">seconds delay between ping</label>
                                     <br />
-                                    <input id="repeat" name="repeat" value="10" min="1" max="60" type="number"
+                                    <input id="repeat" name="repeat" value="10" min="1" max="100" type="number"
                                         class="form-control" />
                                     <label for="#repeat" class="form-label">repetitions of PING command, until a
                                         TERMINATE is
@@ -178,6 +175,7 @@
                             </div>
                         </div>
                     </div>
+                    {% if is_redis %}
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
@@ -188,10 +186,9 @@
                         <div id="collapseRedis" class="accordion-collapse collapse"
                             data-bs-parent="#accordionGenerators">
                             <div class="accordion-body">
-                                <p>This generator will first create N worker tasks, of which each will create X keys on
-                                    a redis
-                                    server.
-                                    Then, another number N worker tasks are created which will then delete those keys.
+                                <p>This generator will first create a number of worker tasks, of which each will create 
+                                    a number of keys on a redis server. Then, another number N worker tasks are created
+                                    which will delete those keys.
                                 </p>
                                 <form hx-post="/rediskeys" hx-swap="none">
                                     <input id="tasks" name="tasks" value="10" min="1" max="60" type="number"
@@ -209,21 +206,57 @@
                                 </form>
                             </div>
                         </div>
-                        <div>
-                            <a href="soccer_field">Soccer Field</a>
-                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if chat %}
+                <hr>
+                <div class="card">
+                    <div class="card-body" id="chat">
+                        <h3>Chat</h3>
+                        <form hx-post="/chat" hx-target="#chat">
+                            <input id="name" name="name" type="text" class="form-control" />
+                            <label for="#tasks" class="form-label">Username</label>
+                            <br />
+                            <button class="btn btn-primary" type="submit">Join Chat</button>
+                        </form>
                     </div>
                 </div>
+                {% endif %}
             </div>
-            <div class="col-lg-6" id="middle_column">
+            <div class="col-lg-4 col-md-4" id="middle_column">
                 <h3>Live Statistics</h3>
                 <div class="container">
                     <div class="row">
                         <div class="col">
-                            <h4>Charts</h4>
-                            <canvas id="tasks_chart"></canvas>
-                            <canvas id="cpu_chart"></canvas>
-                            <canvas id="mem_chart"></canvas>
+                            <hr>
+                            <div>
+                                <p>
+                                    <small>
+                                        The following chart shows the amount of running Tasks in the Tokio runtime (green) and the runtimes current synchronous threads (blue).
+                                    </small>
+                                </p>
+                                <canvas id="tasks_chart"></canvas>
+                            </div>
+                            <hr>
+                            <div>
+                                <p>
+                                    <small>
+                                        The following chart shows the overall CPU consumption on the system in green, and the servers consumption in blue.
+                                    </small>
+                                </p>
+                                <canvas id="cpu_chart"></canvas>
+                            </div>
+                            <hr>
+                            <div>
+                                <p>
+                                    <small>
+                                        The following chart shows the overall RAM consumption on the system in green, and the servers consumption in blue.
+                                    </small>
+                                </p>
+                                <canvas id="mem_chart"></canvas>
+                            </div>
+                            <hr>
                         </div>
                     </div>
                     <div class="row">
@@ -263,23 +296,10 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3">
-                {% if chat %}
-                <h3>Chat</h3>
-                <div class="card">
-                    <div class="card-body" id="chat">
-                        <form hx-post="/chat" hx-target="#chat">
-                            <input id="name" name="name" type="text" class="form-control" />
-                            <label for="#tasks" class="form-label">Username</label>
-                            <br />
-                            <button class="btn btn-primary" type="submit">Join Chat</button>
-                        </form>
-                    </div>
-                </div>
-
-                {% endif %}
+            <div class="col-lg-4 col-md-4">
                 <div class="card">
                     <div class="card-body" id="soccerFieldCard">
+                    <h3>Multiplayer Soccer Field</h3>
                     <svg width="400" height="800" id="soccerField">
                         <rect width="100%" height="100%" fill="#4CAF50" />
 

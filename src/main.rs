@@ -118,6 +118,7 @@ async fn root(State(app): State<Arc<AppState>>) -> impl IntoResponse {
     // TODO
     let ctx = context! {
         chat => &chat_enabled(),
+        is_redis => &is_redis(),
         sysinfo => &get_systeminformation(),
         statsHistory => &serde_json::to_string(&app.stats.get_history().await).unwrap(),
         messageCountMax => &message_count_max()
@@ -160,7 +161,7 @@ fn updater_interval() -> u64 {
         .unwrap_or(1000)
 }
 
-fn chat_enabled() -> bool {
+pub fn chat_enabled() -> bool {
     matches!(
         std::env::var("CHAT")
             .map(|s| s.to_lowercase())
@@ -168,4 +169,8 @@ fn chat_enabled() -> bool {
             .as_str(),
         "true" | "1"
     )
+}
+
+pub fn is_redis() -> bool {
+    std::env::var("REDIS_URL").is_ok()
 }

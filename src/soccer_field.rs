@@ -77,8 +77,14 @@ impl Coordinate {
 
 impl Speed {
     fn reduce(&mut self) {
-        self.0 = self.0 * 0.99;
-        self.1 = self.1 * 0.99;
+        self.0 = self.0 * 0.9;
+        self.1 = self.1 * 0.9;
+        if self.0 == 0.0 {
+            self.1 = 0.0;
+        }
+        if self.1 == 0.0 {
+            self.0 = 0.0;
+        }
     }
 }
 
@@ -89,7 +95,7 @@ impl Player {
     }
     fn update(&mut self) {
         let (distance, angle) = self.target.distance_angle(&self.position);
-        if distance > 3.0 {
+        if distance.abs() > 5.0 {
             let distance_speed = if distance * PLAYER_ACCELERATION > MAX_PLAYER_SPEED {
                 distance * PLAYER_ACCELERATION
             } else {
@@ -133,8 +139,8 @@ impl Ball {
         }
     }
     fn pushed_by(&mut self, angle: f32, player: &Player) {
-        self.speed.0 = 2.0 * player.speed.0 * angle.sin();
-        self.speed.1 = 2.0 * player.speed.1 * angle.cos();
+        self.speed.0 = 1.8 * player.speed.0 * angle.sin();
+        self.speed.1 = 1.8 * player.speed.1 * angle.cos();
     }
 }
 
@@ -151,6 +157,7 @@ impl SoccerField {
         for (_, player) in &self.players {
             let (distance, angle) = player.position.distance_angle(&self.ball.position);
             if distance < 18.0 {
+                log::debug!("{:?} {:?}", self.ball, player);
                 self.ball.pushed_by(angle, &player);
             }
         }
