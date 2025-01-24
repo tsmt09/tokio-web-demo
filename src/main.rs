@@ -10,7 +10,7 @@ mod stats_collector;
 use axum::{
     extract::{ws::WebSocket, State, WebSocketUpgrade},
     http::Response,
-    response::{Html, IntoResponse},
+    response::IntoResponse,
     routing::{get, post},
     Router,
 };
@@ -67,7 +67,6 @@ fn main() {
 struct AppState {
     stats: Arc<StatsCollector>,
     chat: Arc<Chat>,
-    minij: Arc<minijinja::Environment<'static>>,
     soccer_thread: Arc<SoccerFieldThread>,
 }
 
@@ -81,11 +80,9 @@ async fn async_main() -> Result<(), std::io::Error> {
     let mut minij = minijinja::Environment::new();
     minij.set_loader(path_loader("templates"));
     let soccer_thread = Arc::new(soccer_field::SoccerFieldThread::spawn());
-    let minij = Arc::new(minij);
     let state = Arc::new(AppState {
         stats,
         chat,
-        minij,
         soccer_thread,
     });
     let chat = Router::new()

@@ -1,5 +1,4 @@
 use redis::{InfoDict, RedisResult};
-use serde::Serialize;
 use serde_json::{json, Value};
 use std::{collections::VecDeque, sync::Arc, time::Duration};
 use sysinfo::{CpuExt, ProcessExt, SystemExt};
@@ -29,11 +28,11 @@ impl Stats {
 }
 
 pub struct StatsCollector {
-    interval: Duration,
+    _interval: Duration,
     stats: Stats,
     bc: tokio::sync::broadcast::Sender<Value>,
-    shutdown: tokio::sync::oneshot::Sender<bool>,
-    updater_handle: JoinHandle<()>,
+    _shutdown: tokio::sync::oneshot::Sender<bool>,
+    _updater_handle: JoinHandle<()>,
 }
 
 impl StatsCollector {
@@ -42,17 +41,17 @@ impl StatsCollector {
         let (shutdown, shutdown_rx) = tokio::sync::oneshot::channel::<bool>();
         let bc = bc_tx.clone();
         let stats = Stats::new(capacity);
-        let updater_interval = tokio::time::interval(interval.clone());
+        let updater_interval = tokio::time::interval(interval);
         let updater_stats = stats.clone();
         let updater_handle = tokio::spawn(async move {
             Self::updater(bc_tx, shutdown_rx, updater_stats, updater_interval).await;
         });
         StatsCollector {
-            interval,
+            _interval: interval,
             stats,
             bc,
-            shutdown,
-            updater_handle,
+            _shutdown: shutdown,
+            _updater_handle: updater_handle,
         }
     }
 

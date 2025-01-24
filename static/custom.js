@@ -277,7 +277,7 @@ function loadSoccerField() {
     let old_targetY = 0;
 
     setInterval(() => {
-        if(targetX != old_targetX && targetY != old_targetY) {
+        if(targetX != old_targetX || targetY != old_targetY) {
             socket.send(`[${targetY},${targetX}]`);
             old_targetX = targetX;
             old_targetY = targetY;

@@ -24,7 +24,7 @@ pub async fn load_gen_threads(Form(f): Form<CpuLoadGenForm>) {
                 let mut f_n: u128 = 0;
                 loop {
                     let n = f_n + 1337;
-                    f_n = f_n * n;
+                    f_n *= n;
                     // return if not empty or closed
                     match rx.try_recv() {
                         Err(TryRecvError::Empty) => {}

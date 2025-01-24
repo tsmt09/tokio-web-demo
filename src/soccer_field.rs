@@ -24,7 +24,7 @@ const FIELD_BOUNDARY_Y: i16 = 800;
 const FIELD_BOUNDARY_X: i16 = 400;
 const MAX_PLAYER_SPEED: f32 = 5.0;
 const PLAYER_ACCELERATION: f32 = 0.1;
-const TICKRATE: u16 = 30;
+const TICKRATE: u16 = 128;
 
 #[derive(Debug)]
 struct SoccerField {
@@ -46,12 +46,13 @@ struct Player {
     speed: Speed,
 }
 
-//                  y    x
 #[derive(Copy, Clone, Debug, Serialize)]
 struct Coordinate(i16, i16);
-//             y    x
+//                 y    x
+
 #[derive(Copy, Clone, Debug)]
 struct Speed(f32, f32);
+//            y    x
 
 fn update_pos_with_speed(pos: i16, speed: f32) -> i16 {
     (pos as f32 + speed).round() as i16
@@ -59,14 +60,8 @@ fn update_pos_with_speed(pos: i16, speed: f32) -> i16 {
 
 impl Coordinate {
     fn apply_speed_with_boundaries(&mut self, speed: Speed) {
-        self.0 = std::cmp::max(
-            8,
-            std::cmp::min(update_pos_with_speed(self.0, speed.0), FIELD_BOUNDARY_Y - 8),
-        );
-        self.1 = std::cmp::max(
-            8,
-            std::cmp::min(update_pos_with_speed(self.1, speed.1), FIELD_BOUNDARY_X - 8),
-        );
+        self.0 = update_pos_with_speed(self.0, speed.0).clamp(8, FIELD_BOUNDARY_Y - 8);
+        self.1 = update_pos_with_speed(self.1, speed.1).clamp(8, FIELD_BOUNDARY_X - 8);
     }
     fn distance_angle(&self, other: &Self) -> (f32, f32) {
         let dy: f32 = (self.0 - other.0) as f32;
@@ -77,8 +72,8 @@ impl Coordinate {
 
 impl Speed {
     fn reduce(&mut self) {
-        self.0 = self.0 * 0.9;
-        self.1 = self.1 * 0.9;
+        self.0 *= 0.9;
+        self.1 *= 0.9;
         if self.0 == 0.0 {
             self.1 = 0.0;
         }
@@ -95,20 +90,22 @@ impl Player {
     }
     fn update(&mut self, ball: &mut Ball) {
         let (distance, angle) = self.target.distance_angle(&self.position);
-        if distance > 5.0 {
-            let distance_speed = if distance * PLAYER_ACCELERATION > MAX_PLAYER_SPEED {
-                distance * PLAYER_ACCELERATION
-            } else {
-                MAX_PLAYER_SPEED
-            };
+        let distance_speed = if distance * PLAYER_ACCELERATION > MAX_PLAYER_SPEED {
+            distance * PLAYER_ACCELERATION
+        } else {
+            MAX_PLAYER_SPEED
+        };
+        if distance > 2.5 {
             self.speed.0 = distance_speed * angle.sin();
             self.speed.1 = distance_speed * angle.cos();
             self.position.apply_speed_with_boundaries(self.speed);
-            // check collision
-            let (distance, angle) = self.position.distance_angle(&ball.position);
-            if distance < 18.0 {
-                ball.pushed_by(angle, &self);
-            }
+        }
+        // check collision
+        let (ball_distance, ball_angle) = self.position.distance_angle(&ball.position);
+        if ball_distance < 18.0 {
+            ball.speed.0 = distance_speed * 1.5 * ball_angle.cos();
+            ball.speed.1 = distance_speed * 1.5 * ball_angle.sin();
+            ball.position.apply_speed_with_boundaries(ball.speed);
         }
     }
 }
@@ -129,24 +126,19 @@ impl Ball {
         // checking limits
         match self.position {
             Coordinate(y, _) if { y >= FIELD_BOUNDARY_Y - 8 } => {
-                self.speed.0 = self.speed.0 * -1.0;
+                self.speed.0 *= -1.0;
             }
             Coordinate(y, _) if { y <= 8 } => {
-                self.speed.0 = self.speed.0 * -1.0;
+                self.speed.0 *= -1.0;
             }
             Coordinate(_, x) if { x >= FIELD_BOUNDARY_X - 8 } => {
-                self.speed.1 = self.speed.1 * -1.0;
+                self.speed.1 *= -1.0;
             }
             Coordinate(_, x) if { x <= 8 } => {
-                self.speed.1 = self.speed.1 * -1.0;
+                self.speed.1 *= -1.0;
             }
             Coordinate(_, _) => {}
         }
-    }
-    fn pushed_by(&mut self, angle: f32, player: &Player) {
-        self.speed.0 = player.speed.0 * angle.sin();
-        self.speed.1 = player.speed.1 * angle.cos();
-        self.update_position();
     }
 }
 
@@ -248,9 +240,12 @@ impl SoccerFieldThread {
         // init soccerfield
         let mut field = SoccerField::new();
         let mut last_debug_print = Instant::now();
+        let tick_duration = std::time::Duration::from_millis(1000 / TICKRATE as u64);
+        let mut last_tick = Instant::now();
+        let internal_duration = std::time::Duration::from_millis(3);
         loop {
-            std::thread::sleep(std::time::Duration::from_millis(1000 / TICKRATE as u64));
-            if let Ok(_) = exit.try_recv() {
+            std::thread::sleep(internal_duration);
+            if exit.try_recv().is_ok() {
                 return;
             }
             if Instant::now().duration_since(last_debug_print) > Duration::from_secs(1) {
@@ -261,22 +256,25 @@ impl SoccerFieldThread {
             if field_updates.receiver_count() > 0 {
                 let _ = field_updates.send(FieldUpdates::Positions(field.positions()));
             }
-            if player_updates.sender_strong_count() > 0 {
-                while let Ok(update) = player_updates.try_recv() {
-                    match update {
-                        PlayerUpdates::Position(id, y, x) => {
-                            if let Some(player) = field.players.get_mut(&id) {
-                                player.update_target(y, x);
+            if Instant::now().duration_since(last_tick) > tick_duration {
+                last_tick = Instant::now();
+                if player_updates.sender_strong_count() > 0 {
+                    while let Ok(update) = player_updates.try_recv() {
+                        match update {
+                            PlayerUpdates::Position(id, y, x) => {
+                                if let Some(player) = field.players.get_mut(&id) {
+                                    player.update_target(y, x);
+                                }
                             }
-                        }
-                        PlayerUpdates::Join(token) => {
-                            let id = field.player_join();
-                            log::info!("Join request by {} as id {}", token, id);
-                            let _ = field_updates.send(FieldUpdates::Joined(token, id));
-                        }
-                        PlayerUpdates::Leave(id) => {
-                            field.player_leave(id);
-                            log::info!("Player {} left the field", id);
+                            PlayerUpdates::Join(token) => {
+                                let id = field.player_join();
+                                log::info!("Join request by {} as id {}", token, id);
+                                let _ = field_updates.send(FieldUpdates::Joined(token, id));
+                            }
+                            PlayerUpdates::Leave(id) => {
+                                field.player_leave(id);
+                                log::info!("Player {} left the field", id);
+                            }
                         }
                     }
                 }
@@ -334,14 +332,11 @@ async fn handle_socket(ws: WebSocket, soccer_thread: Arc<SoccerFieldThread>) {
     // server to client task
     let mut server_to_client_task = tokio::spawn(async move {
         while let Ok(update) = receiver.recv().await {
-            match &update {
-                FieldUpdates::Positions(poslist) => {
-                    ws_send
-                        .send(Message::Text(serde_json::to_string(&poslist).unwrap()))
-                        .await
-                        .unwrap();
-                }
-                _ => {}
+            if let FieldUpdates::Positions(poslist) = &update {
+                ws_send
+                    .send(Message::Text(serde_json::to_string(&poslist).unwrap()))
+                    .await
+                    .unwrap();
             }
         }
     });
