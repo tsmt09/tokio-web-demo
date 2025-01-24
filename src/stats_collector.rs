@@ -76,10 +76,15 @@ impl StatsCollector {
         let client = redis::Client::open(url).expect("cannot create redis client");
         let mut conn = client.get_async_connection().await;
         let mut system = sysinfo::System::new_all();
+        system.refresh_process(current_pid);
+        system.refresh_cpu();
+        system.refresh_memory();
         loop {
-            system.refresh_process(current_pid);
-            system.refresh_cpu();
-            system.refresh_memory();
+            if let Ok(true) = shutdown_rx.try_recv() {
+                log::info!("Closing stats updater");
+                return;
+            }
+
             interval.tick().await;
             system.refresh_process(current_pid);
             system.refresh_cpu();
@@ -115,11 +120,6 @@ impl StatsCollector {
             log::trace!("{:?}", message);
             stats.push(message.clone()).await;
             let _ = bc.send(message);
-
-            if let Ok(true) = shutdown_rx.try_recv() {
-                log::info!("Closing stats updater");
-                return;
-            }
         }
     }
 }

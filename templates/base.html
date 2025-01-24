@@ -79,6 +79,39 @@
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseBlockers" aria-controls="collapseBlockers"
+                                aria-expanded="false">
+                                Sync Sleep Tasks Generator
+                            </button>
+                        </h2>
+                        <div id="collapseBlockers" class="accordion-collapse collapse"
+                            data-bs-parent="#accordionGenerators">
+                            <div class="accordion-body">
+                                <p>
+                                    This generator create N tasks in the tokio runtime, which will do <b>blocking</b> waits for M seconds. If you choose the same amount of tasks as you have as WORKER_THREADS, this should block the webserver for a moment. <i>this is for demonstrational purposes what should not be done with async rust.</i>
+                                </p>
+                                <form hx-post="/blockers" hx-swap="none">
+                                    <input id="tasks" name="tasks" value="10" min="1" max="1024" type="number"
+                                        class="form-control" />
+                                    <label for="#tasks" class="form-label">Tasks</label>
+                                    <br />
+                                    <input id="time" name="time" value="5" min="1" max="60" type="number"
+                                        class="form-control" />
+                                    <label for="#time" class="form-label">Seconds wait per Task</label>
+                                    <br />
+                                    <input id="spawn_blocking" name="spawn_blocking" class="form-check-input"
+                                        type="checkbox" />
+                                    <label for="#spawn_blocking" class="form-label">use <i>spawn_blocking</i> (should
+                                        not block the webserver)</label>
+                                    <br />
+                                    <button class="btn btn-primary" type="submit">Spawn</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#collapseCpuGen" aria-controls="collapseCpuGen" aria-expanded="false">
                                 CPU Load Generator
                             </button>
@@ -95,44 +128,6 @@
                                     <input id="duration" name="duration" value="10" min="1" max="600" type="number"
                                         class="form-control" />
                                     <label for="#duration" class="form-label">seconds lifetime (per task)</label>
-                                    <br />
-                                    <button class="btn btn-primary" type="submit">Spawn</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#collapseBlockers" aria-controls="collapseBlockers"
-                                aria-expanded="false">
-                                Blockers Generator 🔴
-                            </button>
-                        </h2>
-                        <div id="collapseBlockers" class="accordion-collapse collapse"
-                            data-bs-parent="#accordionGenerators">
-                            <div class="accordion-body">
-                                <p>
-                                    This generator create N tasks which will do <b>blocking</b> waits for M seconds. If
-                                    you choose
-                                    the same amount of tasks as you have CPUs, this should block the webserver for a
-                                    moment. <i>this is for demonstrational purposes what should not be done with async
-                                        rust.</i>
-                                    </form>
-                                </p>
-                                <form hx-post="/blockers" hx-swap="none">
-                                    <input id="tasks" name="tasks" value="10" min="1" max="1024" type="number"
-                                        class="form-control" />
-                                    <label for="#tasks" class="form-label">Tasks</label>
-                                    <br />
-                                    <input id="time" name="time" value="5" min="1" max="60" type="number"
-                                        class="form-control" />
-                                    <label for="#time" class="form-label">Seconds wait per Task</label>
-                                    <br />
-                                    <input id="spawn_blocking" name="spawn_blocking" class="form-check-input"
-                                        type="checkbox" />
-                                    <label for="#spawn_blocking" class="form-label">use <i>spawn_blocking</i> (should
-                                        not block the webserver)</label>
                                     <br />
                                     <button class="btn btn-primary" type="submit">Spawn</button>
                                 </form>

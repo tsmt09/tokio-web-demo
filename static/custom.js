@@ -25,14 +25,15 @@ function onStatusMessage(event) {
     document.getElementById('redis_keys_stats').innerHTML = message["keys"];
     document.getElementById('last_update_stats').innerHTML = time.toLocaleString();
     //console.log(event);
+    let messageCountMax = document.getElementById('messageCountMax').getAttribute("value");
 
     // update charts
-    updateTasksChart(message, time);
-    updateCpuChart(message, time);
-    updateMemChart(message, time);
+    updateTasksChart(message, time, messageCountMax);
+    updateCpuChart(message, time, messageCountMax);
+    updateMemChart(message, time, messageCountMax);
 }
 
-function updateMemChart(message, time) {
+function updateMemChart(message, time, messageCountMax) {
     // update charts
     if (charts['mem_chart'].data.labels.length > messageCountMax) {
         charts['mem_chart'].data.labels.shift();
@@ -45,7 +46,7 @@ function updateMemChart(message, time) {
     charts['mem_chart'].update();
 }
 
-function updateCpuChart(message, time) {
+function updateCpuChart(message, time, messageCountMax) {
     // update charts
     if (charts['cpu_chart'].data.labels.length > messageCountMax) {
         charts['cpu_chart'].data.labels.shift();
@@ -58,7 +59,7 @@ function updateCpuChart(message, time) {
     charts['cpu_chart'].update();
 }
 
-function updateTasksChart(message, time) {
+function updateTasksChart(message, time, messageCountMax) {
     // update charts
     if (charts['tasks_chart'].data.labels.length > messageCountMax) {
         charts['tasks_chart'].data.labels.shift();

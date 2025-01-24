@@ -54,9 +54,25 @@ async fn handle_socket(mut socket: WebSocket, stats_collector: Arc<StatsCollecto
 fn main() {
     let _ = dotenv::dotenv();
     pretty_env_logger::init_timed();
-
+    let workers: usize = std::env::var("WORKER_THREADS")
+        .unwrap_or(String::from("1"))
+        .parse()
+        .unwrap();
+    let sync_workers: usize = std::env::var("SYNC_WORKER_THREADS")
+        .unwrap_or(String::from("1"))
+        .parse()
+        .unwrap();
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
+        .worker_threads(workers)
+        .max_blocking_threads(sync_workers)
+        .thread_keep_alive(Duration::from_secs(10))
+        .on_thread_start(|| {
+            log::info!("Started sync thread!");
+        })
+        .on_thread_stop(|| {
+            log::info!("Stopped sync thread!");
+        })
         .build()
         .unwrap();
     rt.block_on(async {

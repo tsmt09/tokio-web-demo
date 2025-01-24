@@ -7,6 +7,15 @@ The following articles have further explanation.
 
 * [Chat using Websockets, HTMX and async Rust](https://tobischmitt.net/blog/async_demo_chat/)
 
+## Running Threads:
+
+- Tokio Console Subscriber Thread
+- Sysinfo Library thread
+- Soccerfield Thread
+- Root thread (tokio runtime management)
+    - + X constant async worker threads (WORKER_THREADS) (default: 1)
+    - + Y flexible sync worker threads (SYNC_WORKER_THREADS) (default: 1)
+
 ## How to
 
 The easiest way is to use the docker-compose file by just starting:
